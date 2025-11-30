@@ -66,7 +66,7 @@ echo
 
 # Test 1: Help command
 test_start "Help command"
-if ./dist/try --no-expand-tokens --help 2>&1 | grep -q "try something"; then
+if ./dist/try --no-expand-tokens --help 2>&1 | grep -q "ephemeral workspace"; then
     test_pass
 else
     test_fail "Help output missing"
@@ -74,7 +74,7 @@ fi
 
 if [ $HAS_VALGRIND -eq 1 ]; then
     test_start_valgrind "Help command"
-    if valgrind --leak-check=full --error-exitcode=1 --quiet ./dist/try --no-expand-tokens --help 2>&1 | grep -q "try something"; then
+    if valgrind --leak-check=full --error-exitcode=1 --quiet ./dist/try --no-expand-tokens --help 2>&1 | grep -q "ephemeral workspace"; then
         test_pass
     else
         test_fail "Help output missing or valgrind error"
@@ -100,28 +100,28 @@ if [ $HAS_VALGRIND -eq 1 ]; then
     fi
 fi
 
-# Test 3: Clone command (dry run - just check output format)
-test_start "Clone command generates shell tasks"
-OUTPUT=$(./dist/try --no-expand-tokens clone --path="$TEST_TRIES" https://github.com/test/repo)
-if echo "$OUTPUT" | grep -q "git clone" && echo "$OUTPUT" | grep -q "mkdir -p"; then
+# Test 3: Exec clone command generates shell script
+test_start "Exec clone command generates shell script"
+OUTPUT=$(./dist/try --no-expand-tokens --path="$TEST_TRIES" exec clone https://github.com/test/repo)
+if echo "$OUTPUT" | grep -q "git clone" && echo "$OUTPUT" | grep -q "# if you can read this"; then
     test_pass
 else
-    test_fail "Clone did not generate expected shell tasks"
+    test_fail "Exec clone did not generate expected script. Output: $OUTPUT"
 fi
 
 if [ $HAS_VALGRIND -eq 1 ]; then
-    test_start_valgrind "Clone command generates shell tasks"
-    OUTPUT=$(valgrind --leak-check=full --error-exitcode=1 --quiet ./dist/try --no-expand-tokens clone --path="$TEST_TRIES" https://github.com/test/repo)
-    if echo "$OUTPUT" | grep -q "git clone" && echo "$OUTPUT" | grep -q "mkdir -p"; then
+    test_start_valgrind "Exec clone command generates shell script"
+    OUTPUT=$(valgrind --leak-check=full --error-exitcode=1 --quiet ./dist/try --no-expand-tokens --path="$TEST_TRIES" exec clone https://github.com/test/repo)
+    if echo "$OUTPUT" | grep -q "git clone" && echo "$OUTPUT" | grep -q "# if you can read this"; then
         test_pass
     else
-        test_fail "Clone did not generate expected shell tasks or valgrind error"
+        test_fail "Exec clone did not generate expected script or valgrind error"
     fi
 fi
 
 # Test 4: --and-exit flag (render once)
 test_start "Test mode: --and-exit renders once"
-OUTPUT=$(./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-exit cd 2>&1 || true)
+OUTPUT=$(./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-exit exec 2>&1 || true)
 # Should render the TUI but not hang
 if [ ! -z "$OUTPUT" ]; then
     test_pass
@@ -131,7 +131,7 @@ fi
 
 if [ $HAS_VALGRIND -eq 1 ]; then
     test_start_valgrind "Test mode: --and-exit renders once"
-    OUTPUT=$(valgrind --leak-check=full --error-exitcode=1 --quiet ./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-exit cd 2>&1 || true)
+    OUTPUT=$(valgrind --leak-check=full --error-exitcode=1 --quiet ./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-exit exec 2>&1 || true)
     if [ ! -z "$OUTPUT" ]; then
         test_pass
     else
@@ -141,18 +141,18 @@ fi
 
 # Test 5: --and-keys with ESC (cancel)
 test_start "Test mode: --and-keys with ESC cancels"
-OUTPUT=$(./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-keys=$'\x1b' cd)
-# ESC should cancel and output "true"
-if echo "$OUTPUT" | grep -q "true"; then
+OUTPUT=$(./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-keys=$'\x1b' exec 2>/dev/null || true)
+# ESC should cancel and output "Cancelled."
+if echo "$OUTPUT" | grep -q "Cancelled"; then
     test_pass
 else
-    test_fail "ESC did not cancel properly"
+    test_fail "ESC did not cancel properly. Output: $OUTPUT"
 fi
 
 if [ $HAS_VALGRIND -eq 1 ]; then
     test_start_valgrind "Test mode: --and-keys with ESC cancels"
-    OUTPUT=$(valgrind --leak-check=full --error-exitcode=1 --quiet ./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-keys=$'\x1b' cd)
-    if echo "$OUTPUT" | grep -q "true"; then
+    OUTPUT=$(valgrind --leak-check=full --error-exitcode=1 --quiet ./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-keys=$'\x1b' exec 2>/dev/null || true)
+    if echo "$OUTPUT" | grep -q "Cancelled"; then
         test_pass
     else
         test_fail "ESC did not cancel properly or valgrind error"
@@ -161,18 +161,18 @@ fi
 
 # Test 6: --and-keys with Enter (select first item)
 test_start "Test mode: --and-keys with Enter selects"
-OUTPUT=$(./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-keys=$'\r' cd)
-# Should output cd command
-if echo "$OUTPUT" | grep -q "cd"; then
+OUTPUT=$(./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-keys=$'\r' exec 2>/dev/null)
+# Should output cd command with script header
+if echo "$OUTPUT" | grep -q "cd" && echo "$OUTPUT" | grep -q "# if you can read this"; then
     test_pass
 else
-    test_fail "Enter did not select item"
+    test_fail "Enter did not select item. Output: $OUTPUT"
 fi
 
 if [ $HAS_VALGRIND -eq 1 ]; then
     test_start_valgrind "Test mode: --and-keys with Enter selects"
-    OUTPUT=$(valgrind --leak-check=full --error-exitcode=1 --quiet ./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-keys=$'\r' cd)
-    if echo "$OUTPUT" | grep -q "cd"; then
+    OUTPUT=$(valgrind --leak-check=full --error-exitcode=1 --quiet ./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-keys=$'\r' exec 2>/dev/null)
+    if echo "$OUTPUT" | grep -q "cd" && echo "$OUTPUT" | grep -q "# if you can read this"; then
         test_pass
     else
         test_fail "Enter did not select item or valgrind error"
@@ -181,7 +181,7 @@ fi
 
 # Test 7: --and-keys with typing and Enter
 test_start "Test mode: --and-keys with text input"
-OUTPUT=$(./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-keys="beta"$'\r' cd)
+OUTPUT=$(./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-keys="beta"$'\r' exec 2>/dev/null)
 # Should match "beta" and select it
 if echo "$OUTPUT" | grep -q "test-beta"; then
     test_pass
@@ -191,7 +191,7 @@ fi
 
 if [ $HAS_VALGRIND -eq 1 ]; then
     test_start_valgrind "Test mode: --and-keys with text input"
-    OUTPUT=$(valgrind --leak-check=full --error-exitcode=1 --quiet ./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-keys="beta"$'\r' cd)
+    OUTPUT=$(valgrind --leak-check=full --error-exitcode=1 --quiet ./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-keys="beta"$'\r' exec 2>/dev/null)
     if echo "$OUTPUT" | grep -q "test-beta"; then
         test_pass
     else
@@ -202,7 +202,7 @@ fi
 # Test 8: --and-keys with Down arrow and Enter
 test_start "Test mode: --and-keys with arrow navigation"
 # Down arrow is \x1b[B
-OUTPUT=$(./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-keys=$'\x1b[B\r' cd)
+OUTPUT=$(./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-keys=$'\x1b[B\r' exec 2>/dev/null)
 if echo "$OUTPUT" | grep -q "cd"; then
     test_pass
 else
@@ -211,7 +211,7 @@ fi
 
 if [ $HAS_VALGRIND -eq 1 ]; then
     test_start_valgrind "Test mode: --and-keys with arrow navigation"
-    OUTPUT=$(valgrind --leak-check=full --error-exitcode=1 --quiet ./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-keys=$'\x1b[B\r' cd)
+    OUTPUT=$(valgrind --leak-check=full --error-exitcode=1 --quiet ./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-keys=$'\x1b[B\r' exec 2>/dev/null)
     if echo "$OUTPUT" | grep -q "cd"; then
         test_pass
     else
@@ -221,7 +221,7 @@ fi
 
 # Test 9: Score shown in full (no truncation)
 test_start "Score displayed completely"
-OUTPUT=$(COLUMNS=80 ./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-exit cd 2>&1)
+OUTPUT=$(COLUMNS=80 ./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-exit exec 2>&1 || true)
 # Check that scores include decimal point and digit after it
 if echo "$OUTPUT" | grep -q ", [0-9]\+\.[0-9]"; then
     test_pass
@@ -231,7 +231,7 @@ fi
 
 if [ $HAS_VALGRIND -eq 1 ]; then
     test_start_valgrind "Score displayed completely"
-    OUTPUT=$(COLUMNS=80 valgrind --leak-check=full --error-exitcode=1 --quiet ./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-exit cd 2>&1)
+    OUTPUT=$(COLUMNS=80 valgrind --leak-check=full --error-exitcode=1 --quiet ./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-exit exec 2>&1 || true)
     if echo "$OUTPUT" | grep -q ", [0-9]\+\.[0-9]"; then
         test_pass
     else
@@ -241,7 +241,7 @@ fi
 
 # Test 10: Long names truncated with ellipsis
 test_start "Long directory names truncated with ellipsis"
-OUTPUT=$(COLUMNS=60 ./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-exit cd 2>&1)
+OUTPUT=$(COLUMNS=60 ./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-exit exec 2>&1 || true)
 # Check that the long directory name is truncated with ellipsis
 if echo "$OUTPUT" | grep -q "2025-11-20.*…"; then
     test_pass
@@ -251,7 +251,7 @@ fi
 
 if [ $HAS_VALGRIND -eq 1 ]; then
     test_start_valgrind "Long directory names truncated with ellipsis"
-    OUTPUT=$(COLUMNS=60 valgrind --leak-check=full --error-exitcode=1 --quiet ./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-exit cd 2>&1)
+    OUTPUT=$(COLUMNS=60 valgrind --leak-check=full --error-exitcode=1 --quiet ./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-exit exec 2>&1 || true)
     if echo "$OUTPUT" | grep -q "2025-11-20.*…"; then
         test_pass
     else
@@ -261,7 +261,7 @@ fi
 
 # Test 11: Metadata right-aligned (overlapping test)
 test_start "Metadata right-aligned at terminal edge"
-OUTPUT=$(COLUMNS=80 ./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-exit cd 2>&1)
+OUTPUT=$(COLUMNS=80 ./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-exit exec 2>&1 || true)
 # Extract a line with metadata and check it ends near column 80
 # The metadata should appear at the end of lines that aren't truncated
 if echo "$OUTPUT" | grep "test-alpha" | grep -q "{dim}just now, [0-9]\+\.[0-9]{reset}"; then
@@ -272,7 +272,7 @@ fi
 
 if [ $HAS_VALGRIND -eq 1 ]; then
     test_start_valgrind "Metadata right-aligned at terminal edge"
-    OUTPUT=$(COLUMNS=80 valgrind --leak-check=full --error-exitcode=1 --quiet ./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-exit cd 2>&1)
+    OUTPUT=$(COLUMNS=80 valgrind --leak-check=full --error-exitcode=1 --quiet ./dist/try --no-expand-tokens --path="$TEST_TRIES" --and-exit exec 2>&1 || true)
     if echo "$OUTPUT" | grep "test-alpha" | grep -q "{dim}just now, [0-9]\+\.[0-9]{reset}"; then
         test_pass
     else

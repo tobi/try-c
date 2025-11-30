@@ -14,112 +14,93 @@
 #include <time.h>
 #include <unistd.h>
 
-// Helper to emit shell commands
-void emit_task(const char *type, const char *arg1, const char *arg2) {
-  if (strcmp(type, "mkdir") == 0) {
-    printf("mkdir -p '%s' \\\n  && ", arg1);
-  } else if (strcmp(type, "cd") == 0) {
-    printf("cd '%s' \\\n  && ", arg1);
-  } else if (strcmp(type, "touch") == 0) {
-    printf("touch '%s' \\\n  && ", arg1);
-  } else if (strcmp(type, "git-clone") == 0) {
-    printf("git clone '%s' '%s' \\\n  && ", arg1, arg2);
-  } else if (strcmp(type, "echo") == 0) {
-    // Expand tokens for echo
-    Z_CLEANUP(zstr_free) zstr expanded = zstr_expand_tokens(arg1);
-    printf("echo '%s' \\\n  && ", zstr_cstr(&expanded));
+// ============================================================================
+// Script building and execution
+// ============================================================================
+
+// Build a script and either execute it (direct mode) or print it (exec mode)
+// Returns 0 on success, 1 on failure
+static int run_script(const char *script, Mode *mode) {
+  if (mode->type == MODE_EXEC) {
+    // Exec mode: print script with header for alias to eval
+    printf(SCRIPT_HEADER);
+    printf("%s", script);
+    return 0;
+  } else {
+    // Direct mode: execute via bash, then print cd hint if present
+    // We run everything except cd (which can't work in subprocess)
+    // Then print the cd command as a hint
+
+    // Find the cd command in the script (looks for "  cd '" since it's indented)
+    const char *cd_line = strstr(script, "\n  cd '");
+    if (cd_line) {
+      cd_line++; // Skip the newline, point to "  cd '"
+    }
+
+    // Build script without cd for execution
+    Z_CLEANUP(zstr_free) zstr exec_script = zstr_init();
+    if (cd_line && cd_line != script) {
+      // Copy everything before the cd line
+      zstr_cat_len(&exec_script, script, cd_line - script);
+    } else if (!cd_line) {
+      // No cd, execute whole script
+      zstr_cat(&exec_script, script);
+    }
+    // If cd is the only line, exec_script stays empty
+
+    // Execute the non-cd part if any
+    if (zstr_len(&exec_script) > 0) {
+      // Remove trailing newlines/whitespace
+      while (zstr_len(&exec_script) > 0) {
+        char last = zstr_cstr(&exec_script)[zstr_len(&exec_script) - 1];
+        if (last == '\n' || last == ' ' || last == '\\') {
+          zstr_pop_char(&exec_script);
+        } else {
+          break;
+        }
+      }
+
+      Z_CLEANUP(zstr_free) zstr cmd = zstr_from("/usr/bin/env bash -c '");
+      // Escape single quotes in script
+      const char *p = zstr_cstr(&exec_script);
+      while (*p) {
+        if (*p == '\'') {
+          zstr_cat(&cmd, "'\\''");
+        } else {
+          zstr_push(&cmd, *p);
+        }
+        p++;
+      }
+      zstr_cat(&cmd, "'");
+
+      int rc = system(zstr_cstr(&cmd));
+      if (rc != 0) {
+        return 1;
+      }
+    }
+
+    // Print cd hint (extract path from "  cd '/path' && \" format)
+    if (cd_line) {
+      // Skip leading spaces
+      const char *path_start = cd_line;
+      while (*path_start == ' ') path_start++;
+      // Now at "cd '/path' && \"
+      if (strncmp(path_start, "cd '", 4) == 0) {
+        path_start += 4; // Skip "cd '"
+        const char *path_end = strchr(path_start, '\'');
+        if (path_end) {
+          printf("cd '%.*s'\n", (int)(path_end - path_start), path_start);
+        }
+      }
+    }
+
+    return 0;
   }
 }
 
-void cmd_init(int argc, char **argv, const char *tries_path) {
-  (void)argc;  // Unused
-  (void)argv;  // Unused
-
-  // Determine if we're in fish shell
-  const char *shell = getenv("SHELL");
-  bool is_fish = (shell && strstr(shell, "fish") != NULL);
-
-  // Override tries_path if provided as argument
-  const char *path_arg = "";
-  if (tries_path && strlen(tries_path) > 0) {
-    static char path_buf[1024];
-    snprintf(path_buf, sizeof(path_buf), " --path \"%s\"", tries_path);
-    path_arg = path_buf;
-  }
-
-  // Get the path to this executable
-  char self_path[1024];
-  ssize_t len = readlink("/proc/self/exe", self_path, sizeof(self_path) - 1);
-  if (len == -1) {
-    // Fallback to argv[0] or a default
-    strncpy(self_path, "try", sizeof(self_path) - 1);
-  } else {
-    self_path[len] = '\0';
-  }
-
-  if (is_fish) {
-    // Fish shell version
-    printf(
-      "function try\n"
-      "  set -l script_path \"%s\"\n"
-      "  # Check if first argument is a known command\n"
-      "  switch $argv[1]\n"
-      "    case clone worktree init\n"
-      "      set -l cmd (/usr/bin/env \"$script_path\"%s $argv 2>/dev/tty | string collect)\n"
-      "    case '*'\n"
-      "      set -l cmd (/usr/bin/env \"$script_path\" cd%s $argv 2>/dev/tty | string collect)\n"
-      "  end\n"
-      "  set -l rc $status\n"
-      "  if test $rc -eq 0\n"
-      "    if string match -r ' && ' -- $cmd\n"
-      "      eval $cmd\n"
-      "    else\n"
-      "      printf '%%s' $cmd\n"
-      "    end\n"
-      "  else\n"
-      "    printf '%%s' $cmd\n"
-      "  end\n"
-      "end\n",
-      self_path, path_arg, path_arg);
-  } else {
-    // Bash/Zsh version
-    printf(
-      "try() {\n"
-      "  script_path='%s'\n"
-      "  # Check if first argument is a known command\n"
-      "  case \"$1\" in\n"
-      "    clone|worktree|init)\n"
-      "      cmd=$(/usr/bin/env \"$script_path\"%s \"$@\" 2>/dev/tty)\n"
-      "      ;;\n"
-      "    *)\n"
-      "      cmd=$(/usr/bin/env \"$script_path\" cd%s \"$@\" 2>/dev/tty)\n"
-      "      ;;\n"
-      "  esac\n"
-      "  rc=$?\n"
-      "  if [ $rc -eq 0 ]; then\n"
-      "    case \"$cmd\" in\n"
-      "      *\" && \"*) eval \"$cmd\" ;;\n"
-      "      *) printf '%%s' \"$cmd\" ;;\n"
-      "    esac\n"
-      "  else\n"
-      "    printf '%%s' \"$cmd\"\n"
-      "  fi\n"
-      "}\n",
-      self_path, path_arg, path_arg);
-  }
-}
-
-void cmd_clone(int argc, char **argv, const char *tries_path) {
-  if (argc < 1) {
-    fprintf(stderr, "Usage: try clone <url> [name]\n");
-    exit(1);
-  }
-
-  char *url = argv[0];
-  char *name = (argc > 1) ? argv[1] : NULL;
-
-  // Generate name if not provided
-  Z_CLEANUP(zstr_free) zstr dir_name = zstr_init();
+// Helper to generate date-prefixed directory name for clone
+static zstr make_clone_dirname(const char *url, const char *name) {
+  zstr dir_name = zstr_init();
 
   time_t now = time(NULL);
   struct tm *t = localtime(&now);
@@ -132,9 +113,9 @@ void cmd_clone(int argc, char **argv, const char *tries_path) {
     zstr_cat(&dir_name, name);
   } else {
     // Extract repo name from URL
-    char *last_slash = strrchr(url, '/');
-    char *repo_name = last_slash ? last_slash + 1 : url;
-    char *dot_git = strstr(repo_name, ".git");
+    const char *last_slash = strrchr(url, '/');
+    const char *repo_name = last_slash ? last_slash + 1 : url;
+    const char *dot_git = strstr(repo_name, ".git");
 
     if (dot_git) {
       zstr_cat_len(&dir_name, repo_name, dot_git - repo_name);
@@ -143,52 +124,163 @@ void cmd_clone(int argc, char **argv, const char *tries_path) {
     }
   }
 
-  Z_CLEANUP(zstr_free)
-  zstr full_path = join_path(tries_path, zstr_cstr(&dir_name));
-
-  emit_task("echo", "Cloning into {b}new try{/b}...", NULL);
-  emit_task("mkdir", zstr_cstr(&full_path), NULL);
-  emit_task("git-clone", url, zstr_cstr(&full_path));
-  emit_task("touch", zstr_cstr(&full_path), NULL); // Update mtime
-  emit_task("cd", zstr_cstr(&full_path), NULL);
-  printf("true\n"); // End chain
+  return dir_name;
 }
 
-void cmd_worktree(int argc, char **argv, const char *tries_path) {
+// ============================================================================
+// Script builders
+// ============================================================================
+
+static zstr build_cd_script(const char *path) {
+  zstr script = zstr_init();
+  zstr_fmt(&script, "touch '%s' && \\\n", path);
+  zstr_fmt(&script, "  cd '%s' && \\\n", path);
+  zstr_cat(&script, "  true\n");
+  return script;
+}
+
+static zstr build_mkdir_script(const char *path) {
+  zstr script = zstr_init();
+  zstr_fmt(&script, "mkdir -p '%s' && \\\n", path);
+  zstr_fmt(&script, "  cd '%s' && \\\n", path);
+  zstr_cat(&script, "  true\n");
+  return script;
+}
+
+static zstr build_clone_script(const char *url, const char *path) {
+  zstr script = zstr_init();
+  zstr_fmt(&script, "git clone '%s' '%s' && \\\n", url, path);
+  zstr_fmt(&script, "  cd '%s' && \\\n", path);
+  zstr_cat(&script, "  true\n");
+  return script;
+}
+
+// ============================================================================
+// Init command - outputs shell function definition
+// ============================================================================
+
+void cmd_init(int argc, char **argv, const char *tries_path) {
+  (void)argc;
+  (void)argv;
+
+  // Determine if we're in fish shell
+  const char *shell = getenv("SHELL");
+  bool is_fish = (shell && strstr(shell, "fish") != NULL);
+
+  // Get the path to this executable
+  char self_path[1024];
+  ssize_t len = readlink("/proc/self/exe", self_path, sizeof(self_path) - 1);
+  if (len == -1) {
+    // Fallback for macOS
+    strncpy(self_path, "try", sizeof(self_path) - 1);
+  } else {
+    self_path[len] = '\0';
+  }
+
+  if (is_fish) {
+    // Fish shell version
+    printf(
+      "function try\n"
+      "  set -l out ('%s' exec --path '%s' $argv 2>/dev/tty)\n"
+      "  if test $status -eq 0\n"
+      "    eval $out\n"
+      "  else\n"
+      "    echo $out\n"
+      "  end\n"
+      "end\n",
+      self_path, tries_path);
+  } else {
+    // Bash/Zsh version
+    printf(
+      "try() {\n"
+      "  local out\n"
+      "  out=$('%s' exec --path '%s' \"$@\" 2>/dev/tty)\n"
+      "  if [ $? -eq 0 ]; then\n"
+      "    eval \"$out\"\n"
+      "  else\n"
+      "    echo \"$out\"\n"
+      "  fi\n"
+      "}\n",
+      self_path, tries_path);
+  }
+}
+
+// ============================================================================
+// Clone command
+// ============================================================================
+
+int cmd_clone(int argc, char **argv, const char *tries_path, Mode *mode) {
+  if (argc < 1) {
+    fprintf(stderr, "Usage: try clone <url> [name]\n");
+    return 1;
+  }
+
+  const char *url = argv[0];
+  const char *name = (argc > 1) ? argv[1] : NULL;
+
+  Z_CLEANUP(zstr_free) zstr dir_name = make_clone_dirname(url, name);
+  Z_CLEANUP(zstr_free) zstr full_path = join_path(tries_path, zstr_cstr(&dir_name));
+  Z_CLEANUP(zstr_free) zstr script = build_clone_script(url, zstr_cstr(&full_path));
+
+  return run_script(zstr_cstr(&script), mode);
+}
+
+// ============================================================================
+// Worktree command
+// ============================================================================
+
+int cmd_worktree(int argc, char **argv, const char *tries_path, Mode *mode) {
   (void)argc;
   (void)argv;
   (void)tries_path;
-  // Simplified worktree implementation
-  // try worktree [dir] [name]
-
-  // For now, just a placeholder or basic implementation
-  fprintf(stderr, "Worktree command not fully implemented in this MVP.\n");
-  exit(1);
+  (void)mode;
+  fprintf(stderr, "Worktree command not yet implemented.\n");
+  return 1;
 }
 
-void cmd_cd(int argc, char **argv, const char *tries_path, TestMode *test_mode) {
-  // If args provided, try to find match or use as filter
-  char *initial_filter = NULL;
-  if (argc > 0) {
-    // Join args
-    // For simplicity, just take first arg
-    initial_filter = argv[0];
-  }
+// ============================================================================
+// Selector command (interactive directory picker)
+// ============================================================================
 
-  SelectionResult result = run_selector(tries_path, initial_filter, test_mode);
+int cmd_selector(int argc, char **argv, const char *tries_path, Mode *mode) {
+  const char *initial_filter = (argc > 0) ? argv[0] : NULL;
+
+  SelectionResult result = run_selector(tries_path, initial_filter, mode);
 
   if (result.type == ACTION_CD) {
-    emit_task("touch", zstr_cstr(&result.path), NULL); // Update mtime
-    emit_task("cd", zstr_cstr(&result.path), NULL);
-    printf("true\n");
+    Z_CLEANUP(zstr_free) zstr script = build_cd_script(zstr_cstr(&result.path));
+    zstr_free(&result.path);
+    return run_script(zstr_cstr(&script), mode);
   } else if (result.type == ACTION_MKDIR) {
-    emit_task("mkdir", zstr_cstr(&result.path), NULL);
-    emit_task("cd", zstr_cstr(&result.path), NULL);
-    printf("true\n");
+    Z_CLEANUP(zstr_free) zstr script = build_mkdir_script(zstr_cstr(&result.path));
+    zstr_free(&result.path);
+    return run_script(zstr_cstr(&script), mode);
   } else {
     // Cancelled
-    printf("true\n");
+    zstr_free(&result.path);
+    printf("Cancelled.\n");
+    return 1;
+  }
+}
+
+// ============================================================================
+// Exec mode entry point
+// ============================================================================
+
+int cmd_exec(int argc, char **argv, const char *tries_path, Mode *mode) {
+  // No subcommand = interactive selector
+  if (argc == 0) {
+    return cmd_selector(0, NULL, tries_path, mode);
   }
 
-  zstr_free(&result.path);
+  const char *subcmd = argv[0];
+
+  if (strcmp(subcmd, "clone") == 0) {
+    return cmd_clone(argc - 1, argv + 1, tries_path, mode);
+  } else if (strcmp(subcmd, "worktree") == 0) {
+    return cmd_worktree(argc - 1, argv + 1, tries_path, mode);
+  } else {
+    // Treat as query for selector
+    return cmd_selector(argc, argv, tries_path, mode);
+  }
 }

@@ -20,19 +20,26 @@ typedef struct {
   zstr path;
 } SelectionResult;
 
-// Test mode configuration (for automated testing)
+// Execution mode
+typedef enum {
+  MODE_DIRECT,  // Direct invocation (immediate execution, print cd hint)
+  MODE_EXEC     // Via alias (return shell script)
+} ModeType;
+
+// Mode configuration
 typedef struct {
-  bool test_mode;         // Enable test mode
-  bool render_once;       // Render once and exit (--and-exit)
-  const char *inject_keys; // Keys to inject (--and-keys)
-  int key_index;          // Current position in inject_keys
-} TestMode;
+  ModeType type;
+  // Test mode options (orthogonal to type)
+  bool render_once;         // Render once and exit (--and-exit)
+  const char *inject_keys;  // Keys to inject (--and-keys)
+  int key_index;            // Current position in inject_keys
+} Mode;
 
 // Run the interactive selector
 // base_path: directory to scan for tries
 // initial_filter: initial search term (can be NULL)
-// test_mode: test configuration (can be NULL for normal operation)
+// mode: execution mode configuration
 SelectionResult run_selector(const char *base_path, const char *initial_filter,
-                             TestMode *test_mode);
+                             Mode *mode);
 
 #endif // TUI_H

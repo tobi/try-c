@@ -130,18 +130,18 @@ static void filter_tries(void) {
 }
 
 // Parse key from test mode injected keys (handles escape sequences)
-static int read_test_key(TestMode *test_mode) {
-  if (test_mode->inject_keys[test_mode->key_index] == '\0') {
+static int read_test_key(Mode *mode) {
+  if (mode->inject_keys[mode->key_index] == '\0') {
     return -1; // End of keys
   }
 
-  unsigned char c = test_mode->inject_keys[test_mode->key_index++];
+  unsigned char c = mode->inject_keys[mode->key_index++];
 
   if (c == '\x1b') {
     // Check for escape sequence
-    if (test_mode->inject_keys[test_mode->key_index] == '[') {
-      test_mode->key_index++;
-      unsigned char seq = test_mode->inject_keys[test_mode->key_index++];
+    if (mode->inject_keys[mode->key_index] == '[') {
+      mode->key_index++;
+      unsigned char seq = mode->inject_keys[mode->key_index++];
       switch (seq) {
       case 'A':
         return ARROW_UP;
@@ -380,7 +380,7 @@ static void render(const char *base_path) {
 
 SelectionResult run_selector(const char *base_path,
                              const char *initial_filter,
-                             TestMode *test_mode) {
+                             Mode *mode) {
   // Initialize
   if (zstr_len(&filter_buffer) == 0 && !filter_buffer.is_long) {
     // First time - already zero-initialized
@@ -396,15 +396,17 @@ SelectionResult run_selector(const char *base_path,
   scan_tries(base_path);
   filter_tries();
 
+  bool is_test = (mode && (mode->render_once || mode->inject_keys));
+
   // Test mode: render once and exit
-  if (test_mode && test_mode->render_once) {
+  if (is_test && mode->render_once) {
     render(base_path);
     SelectionResult result = {.type = ACTION_CANCEL, .path = zstr_init()};
     return result;
   }
 
   // Only setup TTY if not in test mode or if we need to read keys
-  if (!test_mode || !test_mode->inject_keys) {
+  if (!is_test || !mode->inject_keys) {
     enable_raw_mode();
 
     struct sigaction sa;
@@ -419,14 +421,14 @@ SelectionResult run_selector(const char *base_path,
   SelectionResult result = {.type = ACTION_CANCEL, .path = zstr_init()};
 
   while (1) {
-    if (!test_mode || !test_mode->inject_keys) {
+    if (!is_test || !mode->inject_keys) {
       render(base_path);
     }
 
     // Read key from injected keys or real input
     int c;
-    if (test_mode && test_mode->inject_keys) {
-      c = read_test_key(test_mode);
+    if (is_test && mode->inject_keys) {
+      c = read_test_key(mode);
     } else {
       c = read_key();
     }
@@ -486,7 +488,7 @@ SelectionResult run_selector(const char *base_path,
     }
   }
 
-  if (!test_mode || !test_mode->inject_keys) {
+  if (!is_test || !mode->inject_keys) {
     // Clear the screen before exiting
     WRITE(STDERR_FILENO, "\x1b[2J\x1b[H", 7); // Clear screen and move cursor to home
     disable_raw_mode();

@@ -275,12 +275,15 @@ int cmd_exec(int argc, char **argv, const char *tries_path, Mode *mode) {
 
   const char *subcmd = argv[0];
 
-  if (strcmp(subcmd, "clone") == 0) {
+  if (strcmp(subcmd, "cd") == 0) {
+    // Explicit cd command
+    return cmd_selector(argc - 1, argv + 1, tries_path, mode);
+  } else if (strcmp(subcmd, "clone") == 0) {
     return cmd_clone(argc - 1, argv + 1, tries_path, mode);
   } else if (strcmp(subcmd, "worktree") == 0) {
     return cmd_worktree(argc - 1, argv + 1, tries_path, mode);
   } else {
-    // Treat as query for selector
+    // Treat as query for selector (cd is default)
     return cmd_selector(argc, argv, tries_path, mode);
   }
 }

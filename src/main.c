@@ -115,6 +115,9 @@ int main(int argc, char **argv) {
     // Exec mode
     mode.type = MODE_EXEC;
     return cmd_exec(cmd_argc - 1, cmd_argv + 1, path_cstr, &mode);
+  } else if (strcmp(command, "cd") == 0) {
+    // Direct mode cd (interactive selector)
+    return cmd_selector(cmd_argc - 1, cmd_argv + 1, path_cstr, &mode);
   } else if (strcmp(command, "clone") == 0) {
     // Direct mode clone
     return cmd_clone(cmd_argc - 1, cmd_argv + 1, path_cstr, &mode);

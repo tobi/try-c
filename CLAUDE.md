@@ -75,7 +75,7 @@ Commands are emitted via `emit_task()` in `src/commands.c`, which prints shell s
 - Time formatting: `format_relative_time()` for human-readable timestamps
 - `AUTO_FREE` macro: Cleanup helper for raw pointers using `Z_CLEANUP()`
 
-**Data Structures** (`libs/zstr.h`, `libs/zvec.h`, `libs/zlist.h`):
+**Data Structures** (`src/libs/zstr.h`, `src/libs/zvec.h`, `src/libs/zlist.h`):
 - Custom string library (`zstr`) with SSO (Small String Optimization)
 - Generic vector implementation (`zvec`) used for TryEntry collections
 - Generic list implementation (`zlist`) available but rarely needed
@@ -220,16 +220,18 @@ External dependencies are minimal:
 - Math library (`-lm` for fuzzy scoring)
 - No external libraries beyond libc
 
-The `libs/` directory contains bundled single-header libraries (zstr, zvec, zlist) that are self-contained.
+The `src/libs/` directory contains bundled single-header libraries (zstr, zvec, zlist) that are self-contained.
 
 ## Directory Structure
 
 - `src/` - C source and header files
-- `libs/` - Bundled single-header libraries (z-libs)
+- `src/libs/` - Bundled single-header libraries (z-libs: zstr, zvec, zlist)
 - `docs/` - Reference implementation and documentation
+- `test/` - Test suite (test.sh)
 - `obj/` - Object files (created by make, gitignored)
 - `dist/` - Build output directory (created by make, gitignored)
 - `dist/try` - Output binary
+- `.github/workflows/` - CI/CD configuration
 
 ## Key Files
 
@@ -255,3 +257,42 @@ The `libs/` directory contains bundled single-header libraries (zstr, zvec, zlis
   - Document any new bonuses, multipliers, or scoring components
 
 These documentation files serve as specifications and must remain synchronized with the implementation.
+
+## Release Process
+
+When preparing a new release, the following files must be updated with the new version number:
+
+### Version Bump Checklist
+
+1. **flake.nix** (line 18):
+   ```nix
+   version = "0.1.0";  # Update this
+   ```
+
+2. **.SRCINFO** (line 3):
+   ```
+   pkgver = 0.1.0  # Update this
+   ```
+
+3. **src/config.h** (if exists):
+   ```c
+   #define TRY_VERSION "0.1.0"  # Update this
+   ```
+
+### Release Steps
+
+1. Update version numbers in all files listed above
+2. Update CHANGELOG.md (if exists) with release notes
+3. Commit changes: `git commit -m "Bump version to X.Y.Z"`
+4. Create and push tag: `git tag vX.Y.Z && git push origin vX.Y.Z`
+5. GitHub Actions will automatically:
+   - Build binaries for all platforms (Linux x86_64/aarch64, macOS x86_64/aarch64)
+   - Create a GitHub release with binaries attached
+   - Generate release notes from commits
+
+### Versioning Scheme
+
+Follow semantic versioning (semver):
+- **Major (X.0.0)**: Breaking changes to CLI interface or behavior
+- **Minor (0.X.0)**: New features, non-breaking changes
+- **Patch (0.0.X)**: Bug fixes, documentation updates

@@ -34,7 +34,7 @@
 
             installPhase = ''
               mkdir -p $out/bin
-              cp try $out/bin/
+              cp dist/try $out/bin/
             '';
 
             meta = with pkgs.lib; {

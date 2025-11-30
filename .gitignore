@@ -5,6 +5,7 @@ dist/
 *.o
 *.out
 *.exe
+tui_output.txt
 
 # Object files directory
 obj/
@@ -36,3 +37,4 @@ core.*
 
 # Nix
 result
+flake.lock

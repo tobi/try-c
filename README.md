@@ -27,15 +27,15 @@ Instantly navigate through all your experiment directories with:
 
 ```bash
 # Linux x86_64
-curl -sL https://github.com/tobi/try-c/releases/latest/download/try-linux-x86_64.tar.gz | tar xz
+curl -sL https://github.com/tobi/try-cli/releases/latest/download/try-linux-x86_64.tar.gz | tar xz
 sudo mv try /usr/local/bin/
 
 # macOS (Intel)
-curl -sL https://github.com/tobi/try-c/releases/latest/download/try-darwin-x86_64.tar.gz | tar xz
+curl -sL https://github.com/tobi/try-cli/releases/latest/download/try-darwin-x86_64.tar.gz | tar xz
 sudo mv try /usr/local/bin/
 
 # macOS (Apple Silicon)
-curl -sL https://github.com/tobi/try-c/releases/latest/download/try-darwin-aarch64.tar.gz | tar xz
+curl -sL https://github.com/tobi/try-cli/releases/latest/download/try-darwin-aarch64.tar.gz | tar xz
 sudo mv try /usr/local/bin/
 ```
 
@@ -52,8 +52,8 @@ echo 'eval (try init ~/src/tries | string collect)' >> ~/.config/fish/config.fis
 ### Build from source
 
 ```bash
-git clone https://github.com/tobi/try-c.git
-cd try-c
+git clone https://github.com/tobi/try-cli.git
+cd try-cli
 make
 sudo make install
 
@@ -202,25 +202,25 @@ Then add shell integration to your config (see [Shell Integration](#shell-integr
 ### Quick start
 
 ```bash
-nix run github:tobi/try-c
-nix run github:tobi/try-c -- --help
-nix run github:tobi/try-c -- init ~/my-tries
+nix run github:tobi/try-cli
+nix run github:tobi/try-cli -- --help
+nix run github:tobi/try-cli -- init ~/my-tries
 ```
 
 ### Nix Flakes
 
 ```bash
-nix profile install github:tobi/try-c
+nix profile install github:tobi/try-cli
 ```
 
 ### Home Manager
 
 ```nix
 {
-  inputs.try-c.url = "github:tobi/try-c";
+  inputs.try-cli.url = "github:tobi/try-cli";
 
   # Add to your home.nix or wherever you configure packages
-  home.packages = [ inputs.try-c.packages.${system}.default ];
+  home.packages = [ inputs.try-cli.packages.${system}.default ];
 
   # Shell integration will be handled by your shell config
 }
@@ -274,8 +274,8 @@ Both versions are plenty fast for interactive use. The C version just happens to
 Pull requests welcome! This is a pretty straightforward C codebase:
 
 ```bash
-git clone https://github.com/tobi/try-c.git
-cd try-c
+git clone https://github.com/tobi/try-cli.git
+cd try-cli
 make          # Build
 make test     # Run tests
 ./dist/try    # Try it out

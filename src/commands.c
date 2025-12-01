@@ -1,6 +1,7 @@
 // Feature test macros for cross-platform compatibility
 #if defined(__APPLE__)
 #define _DARWIN_C_SOURCE
+#include <mach-o/dyld.h>
 #else
 #define _GNU_SOURCE
 #endif
@@ -246,14 +247,34 @@ void cmd_init(int argc, char **argv, const char *tries_path) {
   const char *shell = getenv("SHELL");
   bool is_fish = (shell && strstr(shell, "fish") != NULL);
 
-  // Get the path to this executable
-  char self_path[1024];
-  ssize_t len = readlink("/proc/self/exe", self_path, sizeof(self_path) - 1);
-  if (len == -1) {
-    // Fallback for macOS
-    strncpy(self_path, "try", sizeof(self_path) - 1);
+  // Get the path to this executable using realpath for absolute path
+  char exe_path[1024];
+  char resolved_path[1024];
+  bool got_path = false;
+
+  // Try /proc/self/exe first (Linux)
+  ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
+  if (len != -1) {
+    exe_path[len] = '\0';
+    got_path = true;
+  }
+#ifdef __APPLE__
+  else {
+    // Try _NSGetExecutablePath on macOS
+    uint32_t size = sizeof(exe_path);
+    if (_NSGetExecutablePath(exe_path, &size) == 0) {
+      got_path = true;
+    }
+  }
+#endif
+
+  // Resolve to absolute path, handling symlinks
+  char *self_path;
+  if (got_path && realpath(exe_path, resolved_path) != NULL) {
+    self_path = resolved_path;
   } else {
-    self_path[len] = '\0';
+    // Fallback: use "command try" to bypass function shadowing
+    self_path = "command try";
   }
 
   if (is_fish) {

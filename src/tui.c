@@ -358,9 +358,10 @@ static void render(const char *base_path) {
   WRITE(STDERR_FILENO, "\x1b[?25l", 6); // Hide cursor
   WRITE(STDERR_FILENO, "\x1b[H", 3);    // Home
 
-  char sep_line[512] = {0};
-  for (int i = 0; i < cols && i < 300; i++)
-    strcat(sep_line, "─");
+  // Build separator line dynamically (handles any terminal width)
+  Z_CLEANUP(zstr_free) zstr sep_line = zstr_init();
+  for (int i = 0; i < cols; i++)
+    zstr_cat(&sep_line, "─");
 
   // Header
   // Use AUTO_ZSTR for temp strings
@@ -368,7 +369,7 @@ static void render(const char *base_path) {
     Z_CLEANUP(zstr_free)
     zstr header_fmt =
         zstr_from("{h1}📁 Try Directory Selection{reset}\x1b[K\n{dim}");
-    zstr_cat(&header_fmt, sep_line);
+    zstr_cat(&header_fmt, zstr_cstr(&sep_line));
     zstr_cat(&header_fmt, "{reset}\x1b[K\n");
 
     Z_CLEANUP(zstr_free) zstr header = zstr_expand_tokens(zstr_cstr(&header_fmt));
@@ -383,7 +384,7 @@ static void render(const char *base_path) {
     zstr search_fmt = zstr_from("{b}Search:{/b} ");
     zstr_cat(&search_fmt, zstr_cstr(&filter_buffer));
     zstr_cat(&search_fmt, "{cursor}\x1b[K\n{dim}");
-    zstr_cat(&search_fmt, sep_line);
+    zstr_cat(&search_fmt, zstr_cstr(&sep_line));
     zstr_cat(&search_fmt, "{reset}\x1b[K\n");
 
     TokenExpansion search_exp = zstr_expand_tokens_with_cursor(zstr_cstr(&search_fmt));
@@ -574,7 +575,7 @@ static void render(const char *base_path) {
   // Footer
   {
     Z_CLEANUP(zstr_free) zstr footer_fmt = zstr_from("{dim}");
-    zstr_cat(&footer_fmt, sep_line);
+    zstr_cat(&footer_fmt, zstr_cstr(&sep_line));
     zstr_cat(&footer_fmt, "{reset}\x1b[K\n");
 
     if (marked_count > 0) {

@@ -204,6 +204,23 @@ int read_key(void) {
 }
 
 int get_window_size(int *rows, int *cols) {
+  // Check TRY_WIDTH/TRY_HEIGHT env vars first (for testing)
+  const char *env_width = getenv("TRY_WIDTH");
+  const char *env_height = getenv("TRY_HEIGHT");
+  if (env_width && env_height) {
+    *cols = atoi(env_width);
+    *rows = atoi(env_height);
+    if (*cols > 0 && *rows > 0) {
+      return 0;
+    }
+  } else if (env_width) {
+    *cols = atoi(env_width);
+    if (*cols > 0) {
+      *rows = 24;  // Default height
+      return 0;
+    }
+  }
+
   struct winsize ws;
 
   // 1. Try ioctl on STDERR

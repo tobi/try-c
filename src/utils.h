@@ -2,9 +2,14 @@
 #define UTILS_H
 
 #include "zstr.h"
+#include "zvec.h"
 #include <stdbool.h>
 #include <stdlib.h>
 #include <time.h>
+
+// Generate common vector types
+Z_VEC_GENERATE_IMPL(zstr, zstr)
+Z_VEC_GENERATE_IMPL(char *, char_ptr)
 
 // ANSI Colors
 #define ANSI_RESET "\033[0m"

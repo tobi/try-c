@@ -50,8 +50,7 @@ static void print_help(void) {
 
 int main(int argc, char **argv) {
   Z_CLEANUP(zstr_free) zstr tries_path = zstr_init();
-  AUTO_FREE char **cmd_argv = NULL;
-  int cmd_argc = 0;
+  Z_CLEANUP(vec_free_char_ptr) vec_char_ptr cmd_args = vec_init_capacity_char_ptr(argc);
 
   // Check NO_COLOR environment variable (https://no-color.org/)
   if (getenv("NO_COLOR") != NULL) {
@@ -60,9 +59,6 @@ int main(int argc, char **argv) {
 
   // Mode configuration
   Mode mode = {.type = MODE_DIRECT};
-
-  // Simple arg parsing
-  cmd_argv = malloc(sizeof(char *) * (size_t)argc);
 
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "--path") == 0 && i + 1 < argc) {
@@ -90,7 +86,7 @@ int main(int argc, char **argv) {
       printf("try %s\n", TRY_VERSION);
       return 0;
     } else {
-      cmd_argv[cmd_argc++] = argv[i];
+      vec_push_char_ptr(&cmd_args, argv[i]);
     }
   }
 
@@ -115,35 +111,35 @@ int main(int argc, char **argv) {
   }
 
   // No command = show help (direct mode)
-  if (cmd_argc == 0) {
+  if (cmd_args.length == 0) {
     print_help();
     return 0;
   }
 
-  const char *command = cmd_argv[0];
+  const char *command = *vec_at_char_ptr(&cmd_args, 0);
 
   // Route commands
   if (strcmp(command, "init") == 0) {
-    cmd_init(cmd_argc - 1, cmd_argv + 1, path_cstr);
+    cmd_init((int)cmd_args.length - 1, cmd_args.data + 1, path_cstr);
     return 0;
   } else if (strcmp(command, "exec") == 0) {
     // Exec mode
     mode.type = MODE_EXEC;
-    return cmd_exec(cmd_argc - 1, cmd_argv + 1, path_cstr, &mode);
+    return cmd_exec((int)cmd_args.length - 1, cmd_args.data + 1, path_cstr, &mode);
   } else if (strcmp(command, "cd") == 0) {
     // Direct mode cd (interactive selector)
-    return cmd_selector(cmd_argc - 1, cmd_argv + 1, path_cstr, &mode);
+    return cmd_selector((int)cmd_args.length - 1, cmd_args.data + 1, path_cstr, &mode);
   } else if (strcmp(command, "clone") == 0) {
     // Direct mode clone
-    return cmd_clone(cmd_argc - 1, cmd_argv + 1, path_cstr, &mode);
+    return cmd_clone((int)cmd_args.length - 1, cmd_args.data + 1, path_cstr, &mode);
   } else if (strcmp(command, "worktree") == 0) {
     // Direct mode worktree
-    return cmd_worktree(cmd_argc - 1, cmd_argv + 1, path_cstr, &mode);
+    return cmd_worktree((int)cmd_args.length - 1, cmd_args.data + 1, path_cstr, &mode);
   } else if (strncmp(command, "https://", 8) == 0 ||
              strncmp(command, "http://", 7) == 0 ||
              strncmp(command, "git@", 4) == 0) {
     // URL shorthand for clone: try <url> = try clone <url>
-    return cmd_clone(cmd_argc, cmd_argv, path_cstr, &mode);
+    return cmd_clone((int)cmd_args.length, cmd_args.data, path_cstr, &mode);
   } else {
     // Unknown command - show help
     fprintf(stderr, "Unknown command: %s\n\n", command);

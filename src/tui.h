@@ -1,6 +1,7 @@
 #ifndef TUI_H
 #define TUI_H
 
+#include "utils.h"
 #include "zstr.h"
 #include <stdbool.h>
 #include <time.h>
@@ -19,8 +20,7 @@ typedef struct {
 typedef struct {
   ActionType type;
   zstr path;
-  char **delete_names;    // For ACTION_DELETE: array of names to delete (malloc'd)
-  size_t delete_count;    // Number of items in delete_names
+  vec_zstr delete_names;    // For ACTION_DELETE: vector of names to delete
 } SelectionResult;
 
 // Execution mode

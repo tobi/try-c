@@ -186,31 +186,31 @@ bool file_exists(const char *path) {
 }
 
 int mkdir_p(const char *path) {
-  // System call is easiest for mkdir -p equivalent in portable C without
-  // libraries But let's try to do it manually or just use system("mkdir -p
-  // ...") for simplicity in this task? The requirement is "dependency free
-  // modern c project". calling system() is standard C. However, implementing it
-  // is better.
+  Z_CLEANUP(zstr_free) zstr tmp = zstr_from(path);
+  
+  // Remove trailing slash
+  if (zstr_len(&tmp) > 0) {
+      char *data = zstr_data(&tmp);
+      if (data[zstr_len(&tmp) - 1] == '/') {
+          zstr_pop_char(&tmp);
+      }
+  }
 
-  char tmp[1024];
-  char *p = NULL;
-  size_t len;
+  char *p_start = zstr_data(&tmp);
+  // Start after the first char to avoid stopping at root /
+  char *p = p_start + 1;
 
-  snprintf(tmp, sizeof(tmp), "%s", path);
-  len = strlen(tmp);
-  if (tmp[len - 1] == '/')
-    tmp[len - 1] = 0;
-
-  for (p = tmp + 1; *p; p++) {
+  while (*p) {
     if (*p == '/') {
       *p = 0;
-      if (mkdir(tmp, S_IRWXU) != 0 && errno != EEXIST) {
+      if (mkdir(p_start, S_IRWXU) != 0 && errno != EEXIST) {
         return -1;
       }
       *p = '/';
     }
+    p++;
   }
-  if (mkdir(tmp, S_IRWXU) != 0 && errno != EEXIST) {
+  if (mkdir(p_start, S_IRWXU) != 0 && errno != EEXIST) {
     return -1;
   }
   return 0;

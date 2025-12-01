@@ -840,11 +840,10 @@ SelectionResult run_selector(const char *base_path,
         if (confirmed) {
           // Collect all marked paths
           result.type = ACTION_DELETE;
-          result.delete_names = malloc(marked_count * sizeof(char*));
-          result.delete_count = 0;
+          // vec_zstr is initialized to 0 via result initialization
           for (size_t i = 0; i < filtered_ptrs.length; i++) {
             if (filtered_ptrs.data[i]->marked_for_delete) {
-              result.delete_names[result.delete_count++] = strdup(zstr_cstr(&filtered_ptrs.data[i]->name));
+              vec_push_zstr(&result.delete_names, zstr_dup(&filtered_ptrs.data[i]->name));
             }
           }
           break;

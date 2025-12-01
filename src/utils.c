@@ -110,6 +110,19 @@ TokenExpansion zstr_expand_tokens_with_cursor(const char *text) {
         zstr_push(&result.expanded, *in++);
         visual_pos++;
       }
+    } else if (*in == '\x1b') {
+      // Skip ANSI escape sequences (don't count toward visual position)
+      zstr_push(&result.expanded, *in++);
+      while (*in && !isalpha((unsigned char)*in)) {
+        zstr_push(&result.expanded, *in++);
+      }
+      if (*in) {
+        zstr_push(&result.expanded, *in++);
+      }
+    } else if (*in == '\n') {
+      // Newlines don't count toward visual position (next line starts at col 1)
+      zstr_push(&result.expanded, *in++);
+      visual_pos = 1;
     } else {
       zstr_push(&result.expanded, *in++);
       visual_pos++;

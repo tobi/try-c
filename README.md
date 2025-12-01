@@ -12,9 +12,7 @@ Ever find yourself with 50 directories named `test`, `test2`, `new-test`, `actua
 
 # What it does
 
-![Fuzzy Search Demo](https://asciinema.org/a/ve8AXBaPhkKz40YbqPTlVjqgs.svg)
-
-*[View interactive version on asciinema](https://asciinema.org/a/ve8AXBaPhkKz40YbqPTlVjqgs)*
+![Fuzzy Search Demo](assets/try-fuzzy-search-demo.gif)
 
 Instantly navigate through all your experiment directories with:
 - **Fuzzy search** that just works

@@ -31,6 +31,7 @@
 
 #include "terminal.h"
 #include <errno.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,8 +39,40 @@
 #include <termios.h>
 #include <unistd.h>
 
+// Helper macro to ignore write return values
+#define WRITE(fd, buf, len) do { ssize_t unused = write(fd, buf, len); (void)unused; } while(0)
+
 static struct termios orig_termios;
 static int raw_mode_enabled = 0;
+static int alternate_screen_enabled = 0;
+
+/*
+ * Emergency cleanup - called on signal or atexit
+ * Ensures terminal is always restored even on abnormal exit
+ */
+static void emergency_cleanup(void) {
+  // Disable alternate screen first (most critical)
+  if (alternate_screen_enabled) {
+    WRITE(STDERR_FILENO, "\x1b[?1049l", 9);
+    alternate_screen_enabled = 0;
+  }
+  // Restore terminal mode
+  if (raw_mode_enabled) {
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
+    raw_mode_enabled = 0;
+  }
+  // Show cursor
+  WRITE(STDERR_FILENO, "\x1b[?25h", 6);
+  // Reset all attributes
+  WRITE(STDERR_FILENO, "\x1b[0m", 4);
+}
+
+/*
+ * Signal handler for abnormal termination (SIGINT, SIGTERM, SIGABRT)
+ */
+static void handle_signal(int sig) {
+  exit(128 + sig);  // Standard convention for signal termination
+}
 
 void disable_raw_mode(void) {
   if (raw_mode_enabled) {
@@ -53,7 +86,18 @@ void enable_raw_mode(void) {
   if (tcgetattr(STDIN_FILENO, &orig_termios) == -1)
     return; // Not a TTY?
 
-  atexit(disable_raw_mode);
+  // Register emergency cleanup on exit (most important!)
+  atexit(emergency_cleanup);
+
+  // Register signal handlers to catch abnormal termination
+  struct sigaction sa;
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = handle_signal;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = 0;
+  sigaction(SIGINT, &sa, NULL);   // Ctrl-C
+  sigaction(SIGTERM, &sa, NULL);  // Termination signal
+  sigaction(SIGABRT, &sa, NULL);  // Abort signal
 
   struct termios raw = orig_termios;
   raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
@@ -252,6 +296,22 @@ int get_window_size(int *rows, int *cols) {
   *cols = 80;
   *rows = 24;
   return 0;
+}
+
+void enable_alternate_screen(void) {
+  // Enable alternate screen buffer (saves current screen, switches to blank alternate)
+  if (!alternate_screen_enabled) {
+    WRITE(STDERR_FILENO, "\x1b[?1049h", 9);
+    alternate_screen_enabled = 1;
+  }
+}
+
+void disable_alternate_screen(void) {
+  // Disable alternate screen buffer (restores original screen)
+  if (alternate_screen_enabled) {
+    WRITE(STDERR_FILENO, "\x1b[?1049l", 9);
+    alternate_screen_enabled = 0;
+  }
 }
 
 void clear_screen(void) {

@@ -28,8 +28,8 @@ void fuzzy_match(TryEntry *entry, const char *query) {
   if (!query || !*query) {
     // Check for date prefix and render with dimming
     if (has_date_prefix(text)) {
-      // Render date prefix (YYYY-MM-DD-) with {dim}, including the trailing dash
-      zstr_cat(&entry->rendered, "{dim}");
+      // Render date prefix (YYYY-MM-DD-) with {dark}, including the trailing dash
+      zstr_cat(&entry->rendered, "{dark}");
       zstr_cat_len(&entry->rendered, text, 11); // Date + dash is 11 chars
       zstr_cat(&entry->rendered, "{/fg}");
       zstr_cat(&entry->rendered, text + 11); // Rest after dash
@@ -73,7 +73,7 @@ void fuzzy_match(TryEntry *entry, const char *query) {
   while (*t_ptr) {
     // Handle date prefix dimming (including the trailing dash at position 10)
     if (has_date && current_pos == 0) {
-      zstr_cat(&entry->rendered, "{dim}");
+      zstr_cat(&entry->rendered, "{dark}");
       in_date_section = true;
     }
 

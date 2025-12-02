@@ -17,32 +17,28 @@ static void print_help(void) {
   Z_CLEANUP(zstr_free) zstr default_path = get_default_tries_path();
 
   Z_CLEANUP(zstr_free) zstr help = zstr_from(
-    "{h1}try{reset} v" TRY_VERSION " - ephemeral workspace manager\n\n"
-    "To use try, add to your shell config:\n\n"
-    "  {dim}# bash/zsh (~/.bashrc or ~/.zshrc){reset}\n"
-    "  {highlight}eval \"$(try init ~/src/tries)\"{/}\n\n"
-    "  {dim}# fish (~/.config/fish/config.fish){reset}\n"
-    "  {highlight}eval (try init ~/src/tries | string collect){/}\n\n"
-    "Then use:\n"
-    "  {b}try{/} [query]         Interactive directory selector\n"
-    "  {b}try clone{/} <url>     Clone repo into dated directory\n"
-    "  {b}try worktree{/} <name> Create worktree from current git repo\n"
-    "  {b}try --help{/}          Show this help\n"
-    "  {b}try --no-colors{/}     Disable colors in output\n\n"
-    "{dim}Manual mode (without alias):{reset}\n"
-    "  {b}try exec{/} [query]    Output shell script to eval\n\n"
-    "{dim}Defaults:{reset}\n"
-    "  Default path: {dim}~/src/tries{reset} (override with {b}--path{/} on init)\n"
-    "  Current default: {dim}");
+    "{h1}try{/} v" TRY_VERSION " - ephemeral workspace manager\n\n"
+    "{h1}To use try, add to your shell config:{/}\n\n"
+    "  {bright:blue}# bash/zsh (~/.bashrc or ~/.zshrc){/}\n"
+    "  eval \"$(try init ~/src/tries)\"\n\n"
+    "  {bright:blue}# fish (~/.config/fish/config.fish){/}\n"
+    "  eval (try init ~/src/tries | string collect)\n\n"
+    "{h1}Commands:{/}\n"
+    "  {b}try{/} [query|url]      {dim}Interactive selector, or clone if URL{/}\n"
+    "  {b}try clone{/} <url>      {dim}Clone repo into dated directory{/}\n"
+    "  {b}try worktree{/} <name>  {dim}Create worktree from current git repo{/}\n"
+    "  {b}try exec{/} [query]     {dim}Output shell script (for manual eval){/}\n"
+    "  {b}try --help{/}           {dim}Show this help{/}\n\n"
+    "{h1}Defaults:{/}\n"
+    "  Path: {b}~/src/tries{/} (override with {b}--path{/} on init)\n"
+    "  Current: {b}");
   zstr_cat(&help, zstr_cstr(&default_path));
-  zstr_cat(&help, "{reset}\n\n"
-    "{dim}Clone Examples:{reset}\n"
-    "  {highlight}try clone https://github.com/tobi/try.git{/}\n"
-    "  {dim}# Creates: 2025-08-27-tobi-try{reset}\n\n"
-    "  {highlight}try clone https://github.com/tobi/try.git my-fork{/}\n"
-    "  {dim}# Creates: my-fork{reset}\n\n"
-    "  {highlight}try https://github.com/tobi/try.git{/}\n"
-    "  {dim}# Shorthand for clone (same as first example){reset}\n");
+  zstr_cat(&help, "{/}\n\n"
+    "{h1}Examples:{/}\n"
+    "  try clone https://github.com/user/repo.git       {bright:blue}# YYYY-MM-DD-user-repo{/}\n"
+    "  try clone https://github.com/user/repo.git foo   {bright:blue}# YYYY-MM-DD-foo{/}\n"
+    "  try https://github.com/user/repo.git             {bright:blue}# shorthand for clone{/}\n"
+    "  try ./my-project worktree feature                {bright:blue}# YYYY-MM-DD-feature{/}\n");
 
   Z_CLEANUP(zstr_free) zstr expanded = zstr_expand_tokens(zstr_cstr(&help));
   fprintf(stderr, "%s", zstr_cstr(&expanded));

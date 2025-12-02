@@ -30,7 +30,7 @@ const char *token_style_h6 = "1;37";              /* Bold + white */
 const char *token_style_b = "1";                   /* Bold (same as strong) */
 const char *token_style_strong = "1";             /* Bold */
 const char *token_style_highlight = "1;33";       /* Bold + yellow */
-const char *token_style_dim = "90";               /* Gray (bright black) */
+const char *token_style_dim = "37";               /* White (softer than bright white) */
 const char *token_style_danger = "48;5;52";       /* Dark red bg */
 
 /* Style attribute types */
@@ -495,9 +495,16 @@ static void apply_token_strong(TokenParser *p) {
 }
 
 static void apply_token_dim_style(TokenParser *p) {
-    /* {dim} = gray (bright black) */
+    /* {dim} = white (standard color, softer than bright white) */
     push_attr(p, ATTR_FG, p->fg_color);
-    p->fg_color = 90; /* Bright black */
+    p->fg_color = 37; /* White */
+    mark_dirty(p);
+}
+
+static void apply_token_dark_style(TokenParser *p) {
+    /* {dark} = 256-color 245 (medium gray, for TUI secondary text) */
+    push_attr(p, ATTR_FG, p->fg_color);
+    p->fg_color = 1245; /* 256-color marker for 245 */
     mark_dirty(p);
 }
 
@@ -605,6 +612,7 @@ static int parse_number(const char *start, const char *end) {
     action tok_h6 { apply_token_h6(&parser); }
     action tok_strong { apply_token_strong(&parser); }
     action tok_dim { apply_token_dim_style(&parser); }
+    action tok_dark { apply_token_dark_style(&parser); }
     action tok_section { apply_token_section(&parser); }
     action tok_danger { apply_token_danger(&parser); }
     action tok_text { apply_token_text(&parser); }
@@ -685,6 +693,7 @@ static int parse_number(const char *start, const char *end) {
     tok_h6 = "{h6}" %tok_h6;
     tok_strong = "{strong}" %tok_strong;
     tok_dim_style = "{dim}" %tok_dim;
+    tok_dark_style = "{dark}" %tok_dark;
     tok_section_open = "{section}" %tok_section;
     tok_danger_open = "{danger}" %tok_danger;
     tok_strike_open = "{strike}" %tok_strikethrough;  # Strikethrough text
@@ -780,6 +789,7 @@ static int parse_number(const char *start, const char *end) {
         tok_h6 |
         tok_strong |
         tok_dim_style |
+        tok_dark_style |
         tok_section_open |
         tok_danger_open |
         tok_strike_open |

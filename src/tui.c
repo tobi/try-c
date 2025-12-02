@@ -368,20 +368,20 @@ static bool render_delete_confirmation(const char *base_path, Mode *mode) {
     int max_show = 10;
     if (max_show > (int)marked_items.length) max_show = (int)marked_items.length;
     for (int i = 0; i < max_show; i++) {
-      Z_CLEANUP(zstr_free) zstr item = zstr_from("  {dim}-{reset} ");
+      Z_CLEANUP(zstr_free) zstr item = zstr_from("  {dark}-{reset} ");
       zstr_cat(&item, zstr_cstr(&marked_items.data[i]->name));
       zstr_cat(&item, "{clr}\n");
       zstr_expand_to(stderr, zstr_cstr(&item));
     }
     if ((int)marked_items.length > max_show) {
       char more[80];
-      snprintf(more, sizeof(more), "  {dim}...and %zu more{reset}{clr}\n",
+      snprintf(more, sizeof(more), "  {dark}...and %zu more{reset}{clr}\n",
                marked_items.length - max_show);
       zstr_expand_to(stderr, more);
     }
 
     // Prompt
-    Z_CLEANUP(zstr_free) zstr prompt = zstr_from("{clr}\n{dim}Type {/}{highlight}YES{/}{dim} to confirm:{reset} ");
+    Z_CLEANUP(zstr_free) zstr prompt = zstr_from("{clr}\n{dark}Type {/}{highlight}YES{/}{dark} to confirm:{reset} ");
 
     const char *confirm_cstr = zstr_cstr(&confirm_input);
     int confirm_len = (int)zstr_len(&confirm_input);
@@ -465,7 +465,7 @@ static void render(const char *base_path) {
   {
     Z_CLEANUP(zstr_free)
     zstr header_fmt =
-        zstr_from("{h1}📁 Try Directory Selection{reset}{clr}\n{dim}");
+        zstr_from("{h1}🏠 Try Directory Selection{reset}{clr}\n{dark}");
     zstr_cat(&header_fmt, zstr_cstr(&sep_line));
     zstr_cat(&header_fmt, "{reset}{clr}\n");
     zstr_expand_to(stderr, zstr_cstr(&header_fmt));
@@ -499,7 +499,7 @@ static void render(const char *base_path) {
       zstr_push(&search_fmt, filter_cstr[i]);
     }
 
-    zstr_cat(&search_fmt, "{clr}\n{dim}");
+    zstr_cat(&search_fmt, "{clr}\n{dark}");
     zstr_cat(&search_fmt, zstr_cstr(&sep_line));
     zstr_cat(&search_fmt, "{reset}{clr}\n");
 
@@ -618,7 +618,7 @@ static void render(const char *base_path) {
         for (int p = 0; p < padding_len; p++) {
           zstr_push(&line, ' ');
         }
-        zstr_cat(&line, "{dim}");
+        zstr_cat(&line, "{dark}");
         zstr_cat(&line, zstr_cstr(&full_meta));
         zstr_cat(&line, "{reset}");
       } else if (available_space > -full_meta_len + 3) {
@@ -627,7 +627,7 @@ static void render(const char *base_path) {
         int chars_to_skip = (available_space < 1) ? (1 - available_space) : 0;
         int chars_to_show = full_meta_len - chars_to_skip;
         if (chars_to_show > 2) {
-          zstr_cat(&line, " {dim}");
+          zstr_cat(&line, " {dark}");
           const char *meta_str = zstr_cstr(&full_meta);
           zstr_cat(&line, meta_str + chars_to_skip);
           zstr_cat(&line, "{reset}");
@@ -663,13 +663,13 @@ static void render(const char *base_path) {
 
       if (idx == selected_index) {
         Z_CLEANUP(zstr_free)
-        zstr line = zstr_from("{section}{highlight}→ {/}📂 Create new: {dim}");
+        zstr line = zstr_from("{section}{highlight}→ {/}📂 Create new: {dark}");
         zstr_cat(&line, zstr_cstr(&preview));
         zstr_cat(&line, "{/}{clr}\n");
         zstr_expand_to(stderr, zstr_cstr(&line));
       } else {
         Z_CLEANUP(zstr_free)
-        zstr line = zstr_from("  📂 Create new: {dim}");
+        zstr line = zstr_from("  📂 Create new: {dark}");
         zstr_cat(&line, zstr_cstr(&preview));
         zstr_cat(&line, "{reset}{clr}\n");
         zstr_expand_to(stderr, zstr_cstr(&line));
@@ -683,7 +683,7 @@ static void render(const char *base_path) {
 
   // Footer
   {
-    Z_CLEANUP(zstr_free) zstr footer_fmt = zstr_from("{dim}");
+    Z_CLEANUP(zstr_free) zstr footer_fmt = zstr_from("{dark}");
     zstr_cat(&footer_fmt, zstr_cstr(&sep_line));
     zstr_cat(&footer_fmt, "{reset}{clr}\n");
 
@@ -693,10 +693,10 @@ static void render(const char *base_path) {
       snprintf(count_str, sizeof(count_str), "%d", marked_count);
       zstr_cat(&footer_fmt, "{highlight}DELETE MODE{/} | ");
       zstr_cat(&footer_fmt, count_str);
-      zstr_cat(&footer_fmt, " marked | {dim}Ctrl-D: Toggle  Enter: Confirm  Esc: Cancel{reset}{clr}\n");
+      zstr_cat(&footer_fmt, " marked | {dark}Ctrl-D: Toggle  Enter: Confirm  Esc: Cancel{reset}{clr}\n");
     } else {
       // Normal footer
-      zstr_cat(&footer_fmt, "{dim}↑/↓: Navigate  Enter: Select  Ctrl-D: Delete  Esc: Cancel{reset}{clr}\n");
+      zstr_cat(&footer_fmt, "{dark}↑/↓: Navigate  Enter: Select  Ctrl-D: Delete  Esc: Cancel{reset}{clr}\n");
     }
 
     // Position cursor in search field and show it

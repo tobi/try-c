@@ -13,12 +13,16 @@ conflicts=('try')
 source=("$pkgname-$pkgver.tar.gz::https://github.com/tobi/try-cli/archive/refs/tags/v$pkgver.tar.gz")
 sha256sums=('SKIP')
 
+pkgver() {
+    cat "$srcdir/$pkgname-$pkgver/VERSION" | tr -d '\n'
+}
+
 build() {
-    cd "try-cli-$pkgver"
+    cd "$pkgname-$pkgver"
     make
 }
 
 package() {
-    cd "try-cli-$pkgver"
+    cd "$pkgname-$pkgver"
     install -Dm755 dist/try "$pkgdir/usr/bin/try"
 }

@@ -62,8 +62,8 @@ void test_redundant_tokens_no_duplicate_codes(void) {
     zstr result = expand_tokens("{dim}{dim}{dim}b");
     const char *s = zstr_cstr(&result);
     
-    /* Should contain exactly one dim code (90) */
-    int count = count_occurrences(s, "\033[90m");
+    /* Should contain exactly one dim code (37 = white) */
+    int count = count_occurrences(s, "\033[37m");
     TEST_CHECK_(count == 1, "Expected 1 dim code, got %d", count);
     TEST_CHECK(contains(s, "b"));
     
@@ -300,11 +300,11 @@ void test_strong_same_as_b(void) {
 void test_dim_token(void) {
     zstr result = expand_tokens("{dim}dimmed{/}");
     const char *s = zstr_cstr(&result);
-    
-    /* Should contain code 90 (bright black/gray) */
-    TEST_CHECK(contains(s, "90"));
+
+    /* Should contain code 37 (white - softer than bright white) */
+    TEST_CHECK(contains(s, "37"));
     TEST_CHECK(contains(s, "dimmed"));
-    
+
     zstr_free(&result);
 }
 

@@ -28,7 +28,7 @@ Composite tokens (like `{highlight}` which sets both bold and yellow) push multi
 
 ANSI codes are only emitted when an actual character is about to be printed. This provides several benefits:
 
-1. **Redundancy avoidance**: `{dim}{dim}{dim}x` outputs only one `\033[90m` code
+1. **Redundancy avoidance**: `{dim}{dim}{dim}x` outputs only one `\033[37m` code
 2. **No unused codes**: `{b}{/}x` outputs just `x` with no ANSI codes
 3. **Efficient output**: Codes are batched when possible (e.g., `\033[1;33m` instead of `\033[1m\033[33m`)
 
@@ -51,7 +51,8 @@ All active styles are automatically reset before each newline character. This en
 | `{h2}` | Bold + blue | `\033[1;34m` |
 | `{h3}` - `{h6}` | Bold + white | `\033[1;37m` |
 | `{strong}` | Bold | `\033[1m` |
-| `{dim}` | Gray foreground (bright black) | `\033[90m` |
+| `{dim}` | White foreground (softer than bright white) | `\033[37m` |
+| `{dark}` | Medium gray foreground (256-color 245, for TUI secondary text) | `\033[38;5;245m` |
 | `{section}` | Bold + dark gray background (for selection highlight) | `\033[1;48;5;237m` |
 | `{danger}` | Dark red background (for warnings/deletions) | `\033[48;5;52m` |
 | `{strike}` | Legacy alias for `{danger}` | `\033[48;5;52m` |

@@ -60,22 +60,26 @@ jobs:
             arch: x86_64
             runner: ubuntu-latest
             cc: gcc
+            ldflags: -static
 
           - os: linux
             arch: aarch64
             runner: ubuntu-latest
             cc: aarch64-linux-gnu-gcc
+            ldflags: -static
             cross: true
 
           - os: darwin
             arch: x86_64
             runner: macos-13
             cc: clang
+            ldflags: ""
 
           - os: darwin
             arch: aarch64
             runner: macos-14
             cc: clang
+            ldflags: ""
 
     steps:
     - name: Checkout code
@@ -98,7 +102,7 @@ jobs:
       run: brew install ragel
 
     - name: Build
-      run: make CC=${{ matrix.cc }}
+      run: make CC=${{ matrix.cc }} LDFLAGS="${{ matrix.ldflags }}"
 
     - name: Upload build artifact
       uses: actions/upload-artifact@v4

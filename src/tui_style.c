@@ -77,6 +77,12 @@ TuiStyleString tui_wrap_zstr(zstr *s) {
 // Internal Helpers
 // ============================================================================
 
+// Write style code to zstr only if colors are enabled
+static inline void tui_style(zstr *s, const char *style) {
+  if (!tui_no_colors && style && *style)
+    zstr_cat(s, style);
+}
+
 static void tui_reemit_flags(TuiStyleString *ss, int flags) {
   if (tui_no_colors)
     return;
@@ -118,9 +124,7 @@ void tui_push(TuiStyleString *ss, const char *style) {
   ss->styles.style_strs[ss->styles.depth][len] = '\0';
   ss->styles.style_flags[ss->styles.depth] = tui_style_flags(style);
 
-  if (!tui_no_colors) {
-    zstr_cat(ss->str, style);
-  }
+  tui_style(ss->str, style);
 }
 
 void tui_pop(TuiStyleString *ss) {
@@ -136,12 +140,12 @@ void tui_pop(TuiStyleString *ss) {
 
 void tui_print(TuiStyleString *ss, const char *style, const char *text) {
   int flags = 0;
-  if (style && *style && !tui_no_colors) {
+  if (!tui_no_colors && style && *style) {
     flags = tui_style_flags(style);
     zstr_cat(ss->str, style);
   }
   zstr_cat(ss->str, text);
-  if (flags && !tui_no_colors) {
+  if (flags) {  // flags is 0 when tui_no_colors, so no redundant check needed
     tui_emit_resets(ss, flags);
     tui_reemit_flags(ss, flags);
   }
@@ -151,7 +155,7 @@ void tui_putc(TuiStyleString *ss, char c) { zstr_push(ss->str, c); }
 
 void tui_printf(TuiStyleString *ss, const char *style, const char *fmt, ...) {
   int flags = 0;
-  if (style && *style && !tui_no_colors) {
+  if (!tui_no_colors && style && *style) {
     flags = tui_style_flags(style);
     zstr_cat(ss->str, style);
   }
@@ -170,7 +174,7 @@ void tui_printf(TuiStyleString *ss, const char *style, const char *fmt, ...) {
       ss->str->s.len += (uint8_t)len;
   }
   va_end(args2);
-  if (flags && !tui_no_colors) {
+  if (flags) {
     tui_emit_resets(ss, flags);
     tui_reemit_flags(ss, flags);
   }
@@ -300,11 +304,10 @@ void tui_screen_input(Tui *t, TuiInput *input) {
 void tui_clr(zstr *s) { zstr_cat(s, ANSI_CLR); }
 
 void tui_zstr_printf(zstr *s, const char *style, const char *text) {
-  if (style && *style && !tui_no_colors)
-    zstr_cat(s, style);
+  tui_style(s, style);
   zstr_cat(s, text);
-  if (style && *style && !tui_no_colors)
-    zstr_cat(s, ANSI_RESET);
+  if (style && *style)
+    tui_style(s, ANSI_RESET);
 }
 
 // ============================================================================

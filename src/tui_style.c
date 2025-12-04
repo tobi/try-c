@@ -315,7 +315,7 @@ void tui_screen_write_truncated(Tui *t, TuiStyleString *line,
   const char *buf = zstr_cstr(&t->line_buf);
   size_t len = zstr_len(&t->line_buf);
   int width = visible_width(buf, len);
-  int overflow_len = overflow ? (int)strlen(overflow) : 0;
+  int overflow_len = overflow ? visible_width(overflow, strlen(overflow)) : 0;
 
   if (width > t->cols) {
     // Need to truncate

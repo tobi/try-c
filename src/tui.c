@@ -435,11 +435,12 @@ static void render(const char *base_path) {
         tui_print(&line, TUI_DARK, zstr_cstr(&full_meta));
       } else if (available >= -meta_len + 3) {
         // Partial metadata - truncate from left, keep right-aligned
+        // Use same right-edge alignment as full metadata (cols - 1)
         int chars_to_skip = 2 - available;
         if (chars_to_skip < 0) chars_to_skip = 0;
         if (chars_to_skip < meta_len) {
           int partial_len = meta_len - chars_to_skip;
-          int padding = cols - path_end - partial_len;
+          int padding = cols - 1 - path_end - partial_len;
           if (padding < 1) padding = 1;
           for (int p = 0; p < padding; p++) tui_putc(&line, ' ');
           tui_print(&line, TUI_DARK, zstr_cstr(&full_meta) + chars_to_skip);
@@ -495,7 +496,7 @@ static void render(const char *base_path) {
   } else {
     tui_print(&line, TUI_DARK, "↑/↓: Navigate  Enter: Select  Ctrl-D: Delete  Esc: Cancel");
   }
-  tui_screen_write_truncated(&t, &line, "… ");
+  tui_screen_write_truncated(&t, &line, NULL);
   // tui_free(&t) called automatically via Z_CLEANUP
 }
 

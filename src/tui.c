@@ -413,7 +413,11 @@ static void render(const char *base_path) {
       Z_CLEANUP(zstr_free) zstr rel_time = format_relative_time(entry->mtime);
       char score_buf[16];
       snprintf(score_buf, sizeof(score_buf), ", %.1f", entry->score);
-      int meta_len = (int)zstr_len(&rel_time) + (int)strlen(score_buf);
+
+      Z_CLEANUP(zstr_free) zstr full_meta = zstr_init();
+      zstr_cat(&full_meta, zstr_cstr(&rel_time));
+      zstr_cat(&full_meta, score_buf);
+      int meta_len = (int)zstr_len(&full_meta);
 
       int prefix_len = 5;  // "→ " (2) + "📁 " (3): arrow=1, emoji=2, spaces=2
       int name_len = (int)zstr_len(&entry->name);
@@ -421,13 +425,24 @@ static void render(const char *base_path) {
       int meta_start = cols - 1 - meta_len;
       int available = meta_start - path_end;
 
-      // Show metadata only if line won't need truncation (spec: hide if truncated)
-      // Line without metadata must fit within cols for metadata to be shown
-      if (available > 2 && path_end < cols) {
+      // Spec: metadata positioning based on available_space
+      // > 2: full metadata with padding
+      // -meta_len+3 to 2: truncate metadata from left (show rightmost)
+      // < -meta_len+3: hide metadata entirely
+      if (available > 2) {
+        // Full metadata with padding
         for (int p = 0; p < available; p++) tui_putc(&line, ' ');
-        tui_print(&line, TUI_DARK, zstr_cstr(&rel_time));
-        tui_print(&line, TUI_DARK, score_buf);
+        tui_print(&line, TUI_DARK, zstr_cstr(&full_meta));
+      } else if (available >= -meta_len + 3) {
+        // Partial metadata - truncate from left
+        int chars_to_skip = 2 - available;
+        if (chars_to_skip < 0) chars_to_skip = 0;
+        if (chars_to_skip < meta_len) {
+          tui_putc(&line, ' ');
+          tui_print(&line, TUI_DARK, zstr_cstr(&full_meta) + chars_to_skip);
+        }
       }
+      // else: hide metadata entirely, name will be truncated
 
       if (danger_pushed) tui_pop(&line);
       tui_screen_write_truncated(&t, &line, "… ");

@@ -94,10 +94,12 @@ void tui_drain_input(void) {
   if (tcgetattr(STDIN_FILENO, &current) != 0)
     return;
 
-  struct termios nonblock = current;
-  nonblock.c_cc[VMIN] = 0;
-  nonblock.c_cc[VTIME] = 0;  // No timeout - immediate return
-  tcsetattr(STDIN_FILENO, TCSANOW, &nonblock);
+  // Need raw mode to read individual bytes (not line-buffered)
+  struct termios drain = current;
+  drain.c_lflag &= ~(ICANON | ECHO);  // Disable canonical mode
+  drain.c_cc[VMIN] = 0;
+  drain.c_cc[VTIME] = 1;  // 0.1s timeout to catch late-arriving bytes
+  tcsetattr(STDIN_FILENO, TCSANOW, &drain);
 
   char discard;
   while (read(STDIN_FILENO, &discard, 1) == 1) {

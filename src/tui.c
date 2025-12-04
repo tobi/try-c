@@ -409,7 +409,7 @@ static void render(const char *base_path) {
       }
       tui_print(&line, NULL, zstr_cstr(&entry->rendered));
 
-      // Calculate metadata and positioning
+      // Calculate metadata and positioning (spec: metadata right-aligned)
       Z_CLEANUP(zstr_free) zstr rel_time = format_relative_time(entry->mtime);
       char score_buf[16];
       snprintf(score_buf, sizeof(score_buf), ", %.1f", entry->score);
@@ -421,8 +421,9 @@ static void render(const char *base_path) {
       int meta_start = cols - 1 - meta_len;
       int available = meta_start - path_end;
 
-      // Show metadata only if there's enough space (spec: hide if path truncated)
-      if (available > 2) {
+      // Show metadata only if line won't need truncation (spec: hide if truncated)
+      // Line without metadata must fit within cols for metadata to be shown
+      if (available > 2 && path_end < cols) {
         for (int p = 0; p < available; p++) tui_putc(&line, ' ');
         tui_print(&line, TUI_DARK, zstr_cstr(&rel_time));
         tui_print(&line, TUI_DARK, score_buf);
@@ -628,10 +629,10 @@ SelectionResult run_selector(const char *base_path,
   if (!is_test || !test->inject_keys) {
     // Disable alternate screen buffer (restores original screen)
     disable_alternate_screen();
-    // Consume any remaining input (e.g., leftover escape sequences)
-    tui_drain_input();
     // Reset terminal state
     disable_raw_mode();
+    // Consume any remaining input (e.g., leftover escape sequences)
+    tui_drain_input();
     // Reset all attributes
     tui_write_reset(stderr);
     fflush(stderr);

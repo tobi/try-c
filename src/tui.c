@@ -409,7 +409,7 @@ static void render(const char *base_path) {
       }
       tui_print(&line, NULL, zstr_cstr(&entry->rendered));
 
-      // Calculate metadata and positioning (spec: metadata right-aligned)
+      // Build metadata string
       Z_CLEANUP(zstr_free) zstr rel_time = format_relative_time(entry->mtime);
       char score_buf[16];
       snprintf(score_buf, sizeof(score_buf), ", %.1f", entry->score);
@@ -419,31 +419,26 @@ static void render(const char *base_path) {
       zstr_cat(&full_meta, score_buf);
       int meta_len = (int)zstr_len(&full_meta);
 
-      int prefix_len = 5;  // "→ " (2) + "📁 " (3): arrow=1, emoji=2, spaces=2
+      // Simple layout: how much space after name?
+      int prefix_len = 5;  // "→ " (2) + "📁 " (3)
       int name_len = (int)zstr_len(&entry->name);
       int path_end = prefix_len + name_len;
-      int meta_start = cols - 1 - meta_len;
-      int available = meta_start - path_end;
+      int space_left = cols - path_end;
 
-      // Spec: metadata positioning based on available_space
-      // > 2: full metadata with padding
-      // -meta_len+3 to 2: truncate metadata from left (show rightmost)
-      // < -meta_len+3: hide metadata entirely
-      if (available > 2) {
-        // Full metadata with padding
-        for (int p = 0; p < available; p++) tui_putc(&line, ' ');
+      if (space_left > meta_len + 2) {
+        // Full metadata with padding (right-aligned)
+        int padding = space_left - meta_len;
+        for (int p = 0; p < padding; p++) tui_putc(&line, ' ');
         tui_print(&line, TUI_DARK, zstr_cstr(&full_meta));
-      } else if (available >= -meta_len + 3) {
-        // Partial metadata - truncate from left, 1 space separator
-        // Calculate how much metadata fits: cols - path_end - 1 (for space)
-        int space_for_meta = cols - path_end - 1;
-        if (space_for_meta > 0 && space_for_meta < meta_len) {
-          int chars_to_skip = meta_len - space_for_meta;
-          tui_putc(&line, ' ');
-          tui_print(&line, TUI_DARK, zstr_cstr(&full_meta) + chars_to_skip);
-        }
+      } else if (space_left > 3) {
+        // Partial metadata - show what fits with 1 space
+        int chars_to_show = space_left - 1;
+        int chars_to_skip = meta_len - chars_to_show;
+        if (chars_to_skip < 0) chars_to_skip = 0;
+        tui_putc(&line, ' ');
+        tui_print(&line, TUI_DARK, zstr_cstr(&full_meta) + chars_to_skip);
       }
-      // else: hide metadata entirely, name will be truncated
+      // else: no room for metadata, line truncation will handle it
 
       if (danger_pushed) tui_pop(&line);
       tui_screen_write_truncated(&t, &line, "… ");

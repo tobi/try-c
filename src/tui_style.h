@@ -134,6 +134,7 @@ typedef struct {
   FILE *file;
   zstr line_buf;
   int row;
+  int cols;  // Terminal width
   int cursor_row;
   int cursor_col;
   bool line_has_selection;
@@ -162,6 +163,8 @@ Tui tui_begin_screen(FILE *f);
 TuiStyleString tui_screen_line(Tui *t);
 TuiStyleString tui_screen_line_selected(Tui *t);
 void tui_screen_write(Tui *t, TuiStyleString *line);
+void tui_screen_write_truncated(Tui *t, TuiStyleString *line,
+                                const char *overflow);
 void tui_screen_empty(Tui *t);
 void tui_screen_clear_rest(Tui *t);
 void tui_free(Tui *t);  // Use with Z_CLEANUP(tui_free)

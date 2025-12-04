@@ -185,10 +185,14 @@ void tui_printf(TuiStyleString *ss, const char *style, const char *fmt, ...) {
 // ============================================================================
 
 Tui tui_begin_screen(FILE *f) {
+  int rows, cols;
+  get_window_size(&rows, &cols);
+  (void)rows;
   fputs(ANSI_HIDE_CURSOR ANSI_HOME, f);
   return (Tui){.file = f,
                .line_buf = zstr_init(),
                .row = 1,
+               .cols = cols,
                .cursor_row = -1,
                .cursor_col = -1,
                .line_has_selection = false,
@@ -216,6 +220,78 @@ void tui_screen_write(Tui *t, TuiStyleString *line) {
   }
   zstr_cat(&t->line_buf, ANSI_CLR "\n");
   fwrite(zstr_cstr(&t->line_buf), 1, zstr_len(&t->line_buf), t->file);
+  t->row++;
+}
+
+// Calculate visible width of string (excluding ANSI escape sequences)
+static int visible_width(const char *s, size_t len) {
+  int width = 0;
+  for (size_t i = 0; i < len; i++) {
+    if (s[i] == '\033' && i + 1 < len && s[i + 1] == '[') {
+      // Skip ANSI escape sequence
+      i += 2;
+      while (i < len && !((s[i] >= 'A' && s[i] <= 'Z') ||
+                          (s[i] >= 'a' && s[i] <= 'z'))) {
+        i++;
+      }
+    } else {
+      width++;
+    }
+  }
+  return width;
+}
+
+// Truncate string to max visible width, preserving ANSI sequences
+// Returns byte offset where truncation should occur
+static size_t truncate_at_width(const char *s, size_t len, int max_width) {
+  int width = 0;
+  for (size_t i = 0; i < len; i++) {
+    if (s[i] == '\033' && i + 1 < len && s[i + 1] == '[') {
+      // Skip ANSI escape sequence (include it in output)
+      i += 2;
+      while (i < len && !((s[i] >= 'A' && s[i] <= 'Z') ||
+                          (s[i] >= 'a' && s[i] <= 'z'))) {
+        i++;
+      }
+    } else {
+      if (width >= max_width) {
+        return i;
+      }
+      width++;
+    }
+  }
+  return len;
+}
+
+void tui_screen_write_truncated(Tui *t, TuiStyleString *line,
+                                const char *overflow) {
+  if (t->line_has_selection) {
+    tui_pop(line);
+    t->line_has_selection = false;
+  }
+
+  const char *buf = zstr_cstr(&t->line_buf);
+  size_t len = zstr_len(&t->line_buf);
+  int width = visible_width(buf, len);
+  int overflow_len = overflow ? (int)strlen(overflow) : 0;
+
+  if (width > t->cols) {
+    // Need to truncate
+    int max_content = t->cols - overflow_len;
+    if (max_content < 0) max_content = 0;
+    size_t trunc_pos = truncate_at_width(buf, len, max_content);
+
+    // Write truncated content
+    fwrite(buf, 1, trunc_pos, t->file);
+    // Reset styles and write overflow indicator
+    fputs(ANSI_RESET, t->file);
+    if (overflow) fputs(overflow, t->file);
+    fputs(ANSI_CLR "\n", t->file);
+  } else {
+    // No truncation needed
+    zstr_cat(&t->line_buf, ANSI_CLR "\n");
+    fwrite(zstr_cstr(&t->line_buf), 1, zstr_len(&t->line_buf), t->file);
+  }
   t->row++;
 }
 

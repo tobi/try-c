@@ -224,22 +224,21 @@ These documentation files serve as specifications and must remain synchronized w
 The `VERSION` file is the single source of truth for version numbers. It is read by:
 - **Makefile**: Passes `-DTRY_VERSION` to the compiler
 - **flake.nix**: Uses `builtins.readFile ./VERSION`
-- **PKGBUILD/.SRCINFO**: Updated via `make update-pkg`
+- **PKGBUILD**: Updated automatically by CI from VERSION
 
 ### Release Steps
 
 1. Update the `VERSION` file with the new version number
-2. Run `make update-pkg` to sync PKGBUILD and .SRCINFO
-3. Commit with excellent release notes in the commit message body:
-   - Summarize all significant changes since the last release
-   - Group changes by category (Features, Bug Fixes, Improvements)
-   - Credit contributors where applicable
-   - Be concise but comprehensive
-4. Create and push tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z" && git push origin master && git push origin vX.Y.Z`
-5. GitHub Actions will automatically:
+2. Commit and push to master
+3. Create and push an annotated tag with release notes:
+   ```bash
+   git tag -a vX.Y.Z -m "Release vX.Y.Z" -m "- Feature 1" -m "- Bug fix 2"
+   git push origin vX.Y.Z
+   ```
+4. GitHub Actions will automatically:
    - Build binaries for all platforms (Linux x86_64/aarch64, macOS x86_64/aarch64)
    - Create a GitHub release with binaries attached
-   - Use commit messages to generate release notes
+   - Publish to AUR with updated PKGBUILD and .SRCINFO
 
 ### Versioning Scheme
 

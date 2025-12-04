@@ -196,12 +196,14 @@ Tui tui_begin_screen(FILE *f) {
                .cursor_row = -1,
                .cursor_col = -1,
                .line_has_selection = false,
+               .line_has_rwrite = false,
                .active_input = NULL};
 }
 
 TuiStyleString tui_screen_line(Tui *t) {
   zstr_clear(&t->line_buf);
   t->line_has_selection = false;
+  // Don't clear line_has_rwrite here - it persists until the line is written
   return (TuiStyleString){.str = &t->line_buf, .styles = tui_styles()};
 }
 
@@ -218,9 +220,12 @@ void tui_screen_write(Tui *t, TuiStyleString *line) {
     tui_pop(line);
     t->line_has_selection = false;
   }
-  zstr_cat(&t->line_buf, ANSI_CLR "\n");
+  // Don't clear to EOL if rwrite was used (would erase right-aligned content)
+  const char *eol = t->line_has_rwrite ? "\n" : ANSI_CLR "\n";
+  zstr_cat(&t->line_buf, eol);
   fwrite(zstr_cstr(&t->line_buf), 1, zstr_len(&t->line_buf), t->file);
   t->row++;
+  t->line_has_rwrite = false;  // Reset for next line
 }
 
 // Decode UTF-8 codepoint starting at s[i], return codepoint and advance i
@@ -317,29 +322,79 @@ void tui_screen_write_truncated(Tui *t, TuiStyleString *line,
   int width = visible_width(buf, len);
   int overflow_len = overflow ? visible_width(overflow, strlen(overflow)) : 0;
 
-  if (width > t->cols) {
+  // Don't clear to EOL if rwrite was used (would erase right-aligned content)
+  const char *eol = t->line_has_rwrite ? "\n" : ANSI_CLR "\n";
+
+  if (width >= t->cols) {
     // Need to truncate
     int max_content = t->cols - overflow_len;
     if (max_content < 0) max_content = 0;
     size_t trunc_pos = truncate_at_width(buf, len, max_content);
 
+    // Strip trailing spaces before overflow indicator
+    while (trunc_pos > 0 && buf[trunc_pos - 1] == ' ') {
+      trunc_pos--;
+    }
+
     // Write truncated content
     fwrite(buf, 1, trunc_pos, t->file);
-    // Reset styles and write overflow indicator
-    fputs(ANSI_RESET, t->file);
+    // Write overflow indicator (inherits current styles including background)
     if (overflow) fputs(overflow, t->file);
-    fputs(ANSI_CLR "\n", t->file);
+    // Reset styles after overflow, then end line
+    fputs(ANSI_RESET, t->file);
+    fputs(eol, t->file);
   } else {
     // No truncation needed
-    zstr_cat(&t->line_buf, ANSI_CLR "\n");
+    zstr_cat(&t->line_buf, eol);
     fwrite(zstr_cstr(&t->line_buf), 1, zstr_len(&t->line_buf), t->file);
   }
   t->row++;
+  t->line_has_rwrite = false;  // Reset for next line
+}
+
+void tui_screen_rwrite(Tui *t, TuiStyleString *line, const char *bg) {
+  // Write right-aligned content, then carriage return (stay on same line)
+  if (t->line_has_selection) {
+    tui_pop(line);
+    t->line_has_selection = false;
+  }
+
+  // If background style provided, set it before clearing so CLR fills with it
+  if (bg && *bg) {
+    fputs(bg, t->file);
+  }
+
+  // Clear line (fills with current background)
+  fputs(ANSI_CLR, t->file);
+
+  const char *buf = zstr_cstr(&t->line_buf);
+  size_t len = zstr_len(&t->line_buf);
+  int width = visible_width(buf, len);
+
+  // Position cursor at (cols - width + 1) to right-align
+  int col = t->cols - width + 1;
+  if (col < 1) col = 1;
+  fprintf(t->file, "\033[%dG", col);
+
+  // Write content
+  fwrite(buf, 1, len, t->file);
+
+  // Reset foreground only (keep background for main content), then \r
+  if (bg && *bg) {
+    fputs(ANSI_RESET_FG "\r", t->file);
+  } else {
+    fputs(ANSI_RESET "\r", t->file);
+  }
+
+  // Mark that rwrite was used - subsequent write should not clear to EOL
+  t->line_has_rwrite = true;
+  // Note: don't increment row - we stay on the same line
 }
 
 void tui_screen_empty(Tui *t) {
   fputs(ANSI_CLR "\n", t->file);
   t->row++;
+  t->line_has_rwrite = false;
 }
 
 void tui_screen_clear_rest(Tui *t) { fputs(ANSI_CLS, t->file); }

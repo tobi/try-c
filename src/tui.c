@@ -367,8 +367,8 @@ static void render(const char *base_path) {
   tui_print(&line, TUI_DARK, sep);
   tui_screen_write_truncated(&t, &line, NULL);
 
-  // List
-  int list_height = rows - 8;
+  // List (rows minus 4 header lines, 2 footer lines, and 1 for final newline)
+  int list_height = rows - 7;
   if (list_height < 1) list_height = 1;
 
   if (selected_index < scroll_offset)
@@ -384,63 +384,39 @@ static void render(const char *base_path) {
       bool is_selected = (idx == selected_index);
       bool is_marked = entry->marked_for_delete;
 
-      // Get line (selected or normal)
-      line = is_selected ? tui_screen_line_selected(&t) : tui_screen_line(&t);
-
-      // Render entry prefix and name
-      bool danger_pushed = false;
-      if (is_selected) {
-        tui_print(&line, TUI_HIGHLIGHT, "→ ");
-        if (is_marked) {
-          tui_print(&line, NULL, "🗑️ ");
-          tui_push(&line, TUI_DANGER);
-          danger_pushed = true;
-        } else {
-          tui_print(&line, NULL, "📁 ");
-        }
-      } else {
-        if (is_marked) {
-          tui_print(&line, NULL, "  🗑️ ");
-          tui_push(&line, TUI_DANGER);
-          danger_pushed = true;
-        } else {
-          tui_print(&line, NULL, "  📁 ");
-        }
+      // Determine line background
+      const char *line_bg = NULL;
+      if (is_marked) {
+        line_bg = TUI_DANGER;
+      } else if (is_selected) {
+        line_bg = TUI_SELECTED;
       }
-      tui_print(&line, NULL, zstr_cstr(&entry->rendered));
 
-      // Build metadata string
+      // Write right-aligned metadata first (will be partially overwritten)
       Z_CLEANUP(zstr_free) zstr rel_time = format_relative_time(entry->mtime);
       char score_buf[16];
       snprintf(score_buf, sizeof(score_buf), ", %.1f", entry->score);
 
-      Z_CLEANUP(zstr_free) zstr full_meta = zstr_init();
-      zstr_cat(&full_meta, zstr_cstr(&rel_time));
-      zstr_cat(&full_meta, score_buf);
-      int meta_len = (int)zstr_len(&full_meta);
+      TuiStyleString ralign = tui_screen_line(&t);
+      tui_print(&ralign, TUI_DARK, zstr_cstr(&rel_time));
+      tui_print(&ralign, TUI_DARK, score_buf);
+      tui_screen_rwrite(&t, &ralign, line_bg);
 
-      // Simple layout: how much space after name?
-      int prefix_len = 5;  // "→ " (2) + "📁 " (3)
-      int name_len = (int)zstr_len(&entry->name);
-      int path_end = prefix_len + name_len;
-      int space_left = cols - path_end;
+      // Now write main content over top (bg already set by rwrite)
+      line = tui_screen_line(&t);
+      if (line_bg) tui_push(&line, line_bg);
 
-      if (space_left > meta_len + 2) {
-        // Full metadata with padding (right-aligned)
-        int padding = space_left - meta_len;
-        for (int p = 0; p < padding; p++) tui_putc(&line, ' ');
-        tui_print(&line, TUI_DARK, zstr_cstr(&full_meta));
-      } else if (space_left > 3) {
-        // Partial metadata - show what fits with 1 space
-        int chars_to_show = space_left - 1;
-        int chars_to_skip = meta_len - chars_to_show;
-        if (chars_to_skip < 0) chars_to_skip = 0;
-        tui_putc(&line, ' ');
-        tui_print(&line, TUI_DARK, zstr_cstr(&full_meta) + chars_to_skip);
+      // Render entry prefix and name
+      if (is_selected) {
+        tui_print(&line, TUI_HIGHLIGHT, "→ ");
+        tui_print(&line, NULL, is_marked ? "🗑️ " : "📁 ");
+      } else {
+        tui_print(&line, NULL, is_marked ? "  🗑️ " : "  📁 ");
       }
-      // else: no room for metadata, line truncation will handle it
+      tui_print(&line, NULL, zstr_cstr(&entry->rendered));
+      tui_putc(&line, ' ');  // Trailing space (ignored by truncation)
 
-      if (danger_pushed) tui_pop(&line);
+      if (line_bg) tui_pop(&line);
       tui_screen_write_truncated(&t, &line, "… ");
 
     } else if (idx == (int)filtered_ptrs.length && zstr_len(&filter_input.text) > 0) {

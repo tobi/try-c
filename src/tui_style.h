@@ -138,6 +138,7 @@ typedef struct {
   int cursor_row;
   int cursor_col;
   bool line_has_selection;
+  bool line_has_rwrite;  // rwrite was used, don't clear to EOL
   TuiInput *active_input;  // Input field with cursor (if any)
 } Tui;
 
@@ -165,6 +166,7 @@ TuiStyleString tui_screen_line_selected(Tui *t);
 void tui_screen_write(Tui *t, TuiStyleString *line);
 void tui_screen_write_truncated(Tui *t, TuiStyleString *line,
                                 const char *overflow);
+void tui_screen_rwrite(Tui *t, TuiStyleString *line, const char *bg);  // Right-align with optional bg fill
 void tui_screen_empty(Tui *t);
 void tui_screen_clear_rest(Tui *t);
 void tui_free(Tui *t);  // Use with Z_CLEANUP(tui_free)

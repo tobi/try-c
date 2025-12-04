@@ -434,15 +434,12 @@ static void render(const char *base_path) {
         for (int p = 0; p < available; p++) tui_putc(&line, ' ');
         tui_print(&line, TUI_DARK, zstr_cstr(&full_meta));
       } else if (available >= -meta_len + 3) {
-        // Partial metadata - truncate from left, keep right-aligned to edge
-        int chars_to_skip = 2 - available;
-        if (chars_to_skip < 0) chars_to_skip = 0;
-        if (chars_to_skip < meta_len) {
-          int partial_len = meta_len - chars_to_skip;
-          // Metadata ends at cols-1, so starts at cols - partial_len
-          int padding = cols - path_end - partial_len;
-          if (padding < 1) padding = 1;
-          for (int p = 0; p < padding; p++) tui_putc(&line, ' ');
+        // Partial metadata - truncate from left, 1 space separator
+        // Calculate how much metadata fits: cols - path_end - 1 (for space)
+        int space_for_meta = cols - path_end - 1;
+        if (space_for_meta > 0 && space_for_meta < meta_len) {
+          int chars_to_skip = meta_len - space_for_meta;
+          tui_putc(&line, ' ');
           tui_print(&line, TUI_DARK, zstr_cstr(&full_meta) + chars_to_skip);
         }
       }

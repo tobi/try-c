@@ -23,6 +23,7 @@ enum EditorKey {
 
 void enable_raw_mode(void);
 void disable_raw_mode(void);
+void tui_drain_input(void);  // Consume remaining stdin after TUI exit
 int get_window_size(int *rows, int *cols);
 int read_key(void);
 void enable_alternate_screen(void);

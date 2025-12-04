@@ -164,7 +164,7 @@ TuiStyleString tui_screen_line_selected(Tui *t);
 void tui_screen_write(Tui *t, TuiStyleString *line);
 void tui_screen_empty(Tui *t);
 void tui_screen_clear_rest(Tui *t);
-void tui_end_screen(Tui *t);
+void tui_free(Tui *t);  // Use with Z_CLEANUP(tui_free)
 void tui_screen_input(Tui *t, TuiInput *input);
 
 // Input field management

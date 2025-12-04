@@ -87,6 +87,26 @@ void disable_raw_mode(void) {
   }
 }
 
+void tui_drain_input(void) {
+  // Consume any remaining bytes in the input buffer
+  // (e.g., leftover escape sequences from mouse events)
+  struct termios current;
+  if (tcgetattr(STDIN_FILENO, &current) != 0)
+    return;
+
+  struct termios nonblock = current;
+  nonblock.c_cc[VMIN] = 0;
+  nonblock.c_cc[VTIME] = 0;  // No timeout - immediate return
+  tcsetattr(STDIN_FILENO, TCSANOW, &nonblock);
+
+  char discard;
+  while (read(STDIN_FILENO, &discard, 1) == 1) {
+    // Consume all pending input
+  }
+
+  tcsetattr(STDIN_FILENO, TCSANOW, &current);
+}
+
 void enable_raw_mode(void) {
   if (tcgetattr(STDIN_FILENO, &orig_termios) == -1)
     return; // Not a TTY?

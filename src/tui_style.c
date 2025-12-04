@@ -226,7 +226,7 @@ void tui_screen_empty(Tui *t) {
 
 void tui_screen_clear_rest(Tui *t) { fputs(ANSI_CLS, t->file); }
 
-void tui_end_screen(Tui *t) {
+void tui_free(Tui *t) {
   fputs(ANSI_CLS, t->file);  // Clear from cursor to end of screen
   if (t->cursor_row >= 0 && t->cursor_col >= 0) {
     fprintf(t->file, "\033[%d;%dH", t->cursor_row, t->cursor_col);

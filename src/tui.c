@@ -316,7 +316,7 @@ static bool render_delete_confirmation(const char *base_path, TestParams *test) 
     tui_clr(line.str);  // Cut off overflow
     tui_screen_write(&t, &line);
 
-    tui_end_screen(&t);
+    tui_free(&t);
 
     // Read key
     int c = is_test ? read_test_key(test) : read_key();
@@ -344,7 +344,7 @@ static void render(const char *base_path) {
   get_window_size(&rows, &cols);
   const char *sep = get_separator_line(cols);
 
-  Tui t = tui_begin_screen(stderr);
+  Z_CLEANUP(tui_free) Tui t = tui_begin_screen(stderr);
 
   // Header
   TuiStyleString line = tui_screen_line(&t);
@@ -513,8 +513,7 @@ static void render(const char *base_path) {
     tui_print(&line, TUI_DARK, "↑/↓: Navigate  Enter: Select  Ctrl-D: Delete  Esc: Cancel");
   }
   tui_screen_write(&t, &line);
-
-  tui_end_screen(&t);
+  // tui_free(&t) called automatically via Z_CLEANUP
 }
 
 SelectionResult run_selector(const char *base_path,
@@ -665,6 +664,8 @@ SelectionResult run_selector(const char *base_path,
   if (!is_test || !test->inject_keys) {
     // Disable alternate screen buffer (restores original screen)
     disable_alternate_screen();
+    // Consume any remaining input (e.g., leftover escape sequences)
+    tui_drain_input();
     // Reset terminal state
     disable_raw_mode();
     // Reset all attributes

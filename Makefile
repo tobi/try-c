@@ -50,7 +50,7 @@ test: test-fast
 
 # Update PKGBUILD and .SRCINFO with current VERSION
 update-pkg:
-	@sed -i 's/^pkgver=.*/pkgver=$(VERSION)/' PKGBUILD
+	@perl -pi -e 's/^pkgver=.*/pkgver=$(VERSION)/' PKGBUILD
 	@makepkg --printsrcinfo > .SRCINFO
 	@echo "Updated PKGBUILD and .SRCINFO to version $(VERSION)"
 

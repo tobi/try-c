@@ -7,6 +7,7 @@ on:
 
 jobs:
   test:
+    environment: OpenSource
     name: Test
     runs-on: ubuntu-latest
     if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')
@@ -24,13 +25,14 @@ jobs:
         cache-name: try-cli-test
         cache-priming: true
 
-    - name: Build
-      run: nix build .#packages.x86_64-linux.default
+    # - name: Build
+    #   run: nix build .#packages.x86_64-linux.default
 
     - name: Run tests
       run: nix develop --command 'make' test test-valgrind
 
   cross-compile:
+    environment: OpenSource
     name: Cross-compile
     if: startsWith(github.ref, 'refs/tags/')
     needs: test
@@ -63,6 +65,7 @@ jobs:
         retention-days: 7
 
   release:
+    environment: OpenSource
     name: Create Release
     if: startsWith(github.ref, 'refs/tags/')
     needs: cross-compile
@@ -99,11 +102,11 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   flakehub-publish:
+    environment: OpenSource
     name: Publish to FlakeHub
     if: startsWith(github.ref, 'refs/tags/')
     needs: release
     runs-on: ubuntu-latest
-    environment: OpenSource
     permissions:
       id-token: write
       contents: read

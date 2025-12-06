@@ -13,7 +13,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Install Nix
       uses: DeterminateSystems/determinate-nix-action@v3
@@ -28,10 +28,7 @@ jobs:
       run: nix build .#packages.x86_64-linux.default
 
     - name: Run tests
-      run: nix develop --command "make test-fast"
-
-    - name: Run valgrind tests
-      run: nix develop --command "make test-valgrind"
+      run: nix develop --command 'make' test test-valgrind
 
   cross-compile:
     name: Cross-compile
@@ -44,7 +41,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Install Nix
       uses: DeterminateSystems/determinate-nix-action@v3
@@ -52,14 +49,14 @@ jobs:
     - name: Setup Nix Cache
       uses: DeterminateSystems/flakehub-cache-action@main
       with:
-        cache-name: try-cli-cross-${{ matrix.target }}
+        cache-name: try-cli-test
         cache-priming: true
 
     - name: Build cross-compiled binary
       run: nix build .#packages.x86_64-linux.${{ matrix.target }}
 
     - name: Upload build artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: try-${{ matrix.target }}
         path: result/bin/try
@@ -75,10 +72,10 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Download all build artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         path: ./artifacts
 
@@ -106,13 +103,14 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     needs: release
     runs-on: ubuntu-latest
+    environment: OpenSource
     permissions:
       id-token: write
       contents: read
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Install Nix
       uses: DeterminateSystems/determinate-nix-action@v3

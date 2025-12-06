@@ -224,7 +224,8 @@ int read_key(void) {
       // X10 mouse: \x1b[M followed by 3 bytes
       if (seq[1] == 'M') {
         char discard[3];
-        read(STDIN_FILENO, discard, 3);  // Consume button + coordinates
+        ssize_t result = read(STDIN_FILENO, discard, 3);  // Consume button + coordinates
+        (void)result;  // Suppress unused result warning
         return KEY_UNKNOWN;
       }
       // Simple arrow keys and similar

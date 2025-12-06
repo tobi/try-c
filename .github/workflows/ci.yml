@@ -1,119 +1,74 @@
-name: Release
+name: CI/CD
 
 on:
   push:
-    tags: [ 'v*' ]
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   test:
-    name: Test ${{ matrix.os }} ${{ matrix.arch }}
-    runs-on: ${{ matrix.runner }}
-
-    strategy:
-      matrix:
-        include:
-          - os: linux
-            arch: x86_64
-            runner: ubuntu-latest
-
-          - os: linux
-            arch: aarch64
-            runner: ubuntu-24.04-arm
-
-          - os: darwin
-            arch: x86_64
-            runner: macos-13
-
-          - os: darwin
-            arch: aarch64
-            runner: macos-14
+    name: Test
+    runs-on: ubuntu-latest
+    if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install dependencies (Linux)
-      if: matrix.os == 'linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y ragel valgrind
+    - name: Install Nix
+      uses: DeterminateSystems/determinate-nix-action@v3
 
-    - name: Install dependencies (macOS)
-      if: matrix.os == 'darwin'
-      run: brew install ragel
+    - name: Setup Nix Cache
+      uses: DeterminateSystems/flakehub-cache-action@main
+      with:
+        cache-name: try-cli-test
+        cache-priming: true
 
     - name: Build
-      run: make
+      run: nix build .#packages.x86_64-linux.default
 
     - name: Run tests
-      run: make test
+      run: nix run .#apps.x86_64-linux.default -- test-fast
 
-  build:
-    name: Build ${{ matrix.os }} ${{ matrix.arch }}
+    - name: Run valgrind tests
+      run: nix run .#apps.x86_64-linux.default -- test-valgrind
+
+  cross-compile:
+    name: Cross-compile
+    if: startsWith(github.ref, 'refs/tags/')
     needs: test
-    runs-on: ${{ matrix.runner }}
-
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        include:
-          - os: linux
-            arch: x86_64
-            runner: ubuntu-latest
-            cc: gcc
-            ldflags: -static
-
-          - os: linux
-            arch: aarch64
-            runner: ubuntu-latest
-            cc: aarch64-linux-gnu-gcc
-            ldflags: -static
-            cross: true
-
-          - os: darwin
-            arch: x86_64
-            runner: macos-13
-            cc: clang
-            ldflags: ""
-
-          - os: darwin
-            arch: aarch64
-            runner: macos-14
-            cc: clang
-            ldflags: ""
+        target: [x86_64-linux, aarch64-linux, x86_64-darwin, aarch64-darwin]
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install cross-compiler (Linux ARM64)
-      if: matrix.cross
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-aarch64-linux-gnu ragel
+    - name: Install Nix
+      uses: DeterminateSystems/determinate-nix-action@v3
 
-    - name: Install dependencies (Linux)
-      if: matrix.os == 'linux' && !matrix.cross
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y ragel
+    - name: Setup Nix Cache
+      uses: DeterminateSystems/flakehub-cache-action@main
+      with:
+        cache-name: try-cli-cross-${{ matrix.target }}
+        cache-priming: true
 
-    - name: Install dependencies (macOS)
-      if: matrix.os == 'darwin'
-      run: brew install ragel
-
-    - name: Build
-      run: make CC=${{ matrix.cc }} LDFLAGS="${{ matrix.ldflags }}"
+    - name: Build cross-compiled binary
+      run: nix build .#packages.x86_64-linux.${{ matrix.target }}
 
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:
-        name: try-${{ matrix.os }}-${{ matrix.arch }}
-        path: ./dist/try
-        retention-days: 30
+        name: try-${{ matrix.target }}
+        path: result/bin/try
+        retention-days: 7
 
   release:
     name: Create Release
-    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: cross-compile
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -148,6 +103,7 @@ jobs:
 
   aur-publish:
     name: Publish to AUR
+    if: startsWith(github.ref, 'refs/tags/')
     needs: release
     runs-on: ubuntu-latest
     container: archlinux:latest

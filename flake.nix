@@ -56,32 +56,151 @@
       };
 
       perSystem = { config, self', inputs', pkgs, system, ... }: {
-        packages.default = pkgs.stdenv.mkDerivation {
-          pname = "try";
-          version = builtins.replaceStrings ["\n"] [""] (builtins.readFile ./VERSION);
+        packages = {
+          default = pkgs.stdenv.mkDerivation {
+            pname = "try";
+            version = builtins.replaceStrings ["\n"] [""] (builtins.readFile ./VERSION);
 
-          src = inputs.self;
+            src = inputs.self;
 
-          nativeBuildInputs = with pkgs; [
-            gcc
-            gnumake
-          ];
+            nativeBuildInputs = with pkgs; [
+              gcc
+              gnumake
+            ];
 
-          buildPhase = ''
-            make
-          '';
+            buildPhase = ''
+              make
+            '';
 
-          installPhase = ''
-            mkdir -p $out/bin
-            cp dist/try $out/bin/
-          '';
+            installPhase = ''
+              mkdir -p $out/bin
+              cp dist/try $out/bin/
+            '';
 
-          meta = with pkgs.lib; {
-            description = "Fresh directories for every vibe - C implementation";
-            homepage = "https://github.com/tobi/try-cli";
-            license = licenses.mit;
-            maintainers = [ "tobi@shopify.com" ];
-            platforms = platforms.unix;
+            meta = with pkgs.lib; {
+              description = "Fresh directories for every vibe - C implementation";
+              homepage = "https://github.com/tobi/try-cli";
+              license = licenses.mit;
+              maintainers = [ "tobi@shopify.com" ];
+              platforms = platforms.unix;
+            };
+          };
+
+          # Cross-compilation packages
+          x86_64-linux = pkgs.stdenv.mkDerivation {
+            pname = "try";
+            version = builtins.replaceStrings ["\n"] [""] (builtins.readFile ./VERSION);
+
+            src = inputs.self;
+
+            nativeBuildInputs = with pkgs; [
+              gcc
+              gnumake
+            ];
+
+            buildPhase = ''
+              make
+            '';
+
+            installPhase = ''
+              mkdir -p $out/bin
+              cp dist/try $out/bin/
+            '';
+
+            meta = with pkgs.lib; {
+              description = "Fresh directories for every vibe - C implementation (x86_64-linux)";
+              homepage = "https://github.com/tobi/try-cli";
+              license = licenses.mit;
+              maintainers = [ "tobi@shopify.com" ];
+              platforms = [ "x86_64-linux" ];
+            };
+          };
+
+          aarch64-linux = pkgs.pkgsCross.aarch64-multiplatform.stdenv.mkDerivation {
+            pname = "try";
+            version = builtins.replaceStrings ["\n"] [""] (builtins.readFile ./VERSION);
+
+            src = inputs.self;
+
+            nativeBuildInputs = with pkgs.pkgsCross.aarch64-multiplatform; [
+              gcc
+              gnumake
+            ];
+
+            buildPhase = ''
+              make
+            '';
+
+            installPhase = ''
+              mkdir -p $out/bin
+              cp dist/try $out/bin/
+            '';
+
+            meta = with pkgs.lib; {
+              description = "Fresh directories for every vibe - C implementation (aarch64-linux)";
+              homepage = "https://github.com/tobi/try-cli";
+              license = licenses.mit;
+              maintainers = [ "tobi@shopify.com" ];
+              platforms = [ "aarch64-linux" ];
+            };
+          };
+
+          x86_64-darwin = pkgs.pkgsCross.x86_64-darwin.stdenv.mkDerivation {
+            pname = "try";
+            version = builtins.replaceStrings ["\n"] [""] (builtins.readFile ./VERSION);
+
+            src = inputs.self;
+
+            nativeBuildInputs = with pkgs.pkgsCross.x86_64-darwin; [
+              gcc
+              gnumake
+            ];
+
+            buildPhase = ''
+              make
+            '';
+
+            installPhase = ''
+              mkdir -p $out/bin
+              cp dist/try $out/bin/
+            '';
+
+            meta = with pkgs.lib; {
+              description = "Fresh directories for every vibe - C implementation (x86_64-darwin)";
+              homepage = "https://github.com/tobi/try-cli";
+              license = licenses.mit;
+              maintainers = [ "tobi@shopify.com" ];
+              platforms = [ "x86_64-darwin" ];
+            };
+          };
+
+          aarch64-darwin = pkgs.pkgsCross.aarch64-darwin.stdenv.mkDerivation {
+            pname = "try";
+            version = builtins.replaceStrings ["\n"] [""] (builtins.readFile ./VERSION);
+
+            src = inputs.self;
+
+            nativeBuildInputs = with pkgs.pkgsCross.aarch64-darwin; [
+              gcc
+              gnumake
+            ];
+
+            buildPhase = ''
+              make
+            '';
+
+            installPhase = ''
+              mkdir -p $out/bin
+              cp dist/try $out/bin/
+            '';
+
+            meta = with pkgs.lib; {
+              description = "Fresh directories for every vibe - C implementation (aarch64-darwin)";
+              homepage = "https://github.com/tobi/try-cli";
+              license = licenses.mit;
+              maintainers = [ "tobi@shopify.com" ];
+              platforms = [ "aarch64-darwin" ];
+            };
           };
         };
 

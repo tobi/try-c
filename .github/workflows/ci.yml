@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target: [x86_64-linux, aarch64-linux, x86_64-darwin, aarch64-darwin]
+        target: [x86_64-linux, aarch64-linux]
 
     steps:
     - name: Checkout code
